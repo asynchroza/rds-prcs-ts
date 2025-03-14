@@ -18,12 +18,9 @@ consumers).
             - Each consumer group has the concept of the first ID never consumed so that, when a consumer asks for new messages, it can provide just messages that were not previously delivered.
             - Consuming a message, however, requires an explicit acknowledgment using a specific command. Redis interprets the acknowledgment as: this message was correctly processed so it can be evicted from the consumer group.
             - A consumer group tracks all the messages that are currently pending, that is, messages that were delivered to some consumer of the consumer group, but are yet to be acknowledged as processed. Thanks to this feature, when accessing the message history of a stream, each consumer will only see messages that were delivered to it.
-
         - `XACK` acknowledging consumed messages (IMPORTANT! - we will have to process and then acknowledge consumed message)
         - **Claiming** messages in case of failure (`XPENDING`, `XCLAIM` and automatic claiming)
-
         - So once the deliveries counter reaches a given large number that you chose, it is probably wiser to put such messages in another stream and send a notification to the system administrator. This is basically the way that Redis Streams implements the **dead letter** concept.
-
         - Processing order
             - If you use 1 stream -> 1 consumer, you are processing messages in order.
             - If you use N streams with N consumers, so that only a given consumer hits a subset of the N streams, you can scale the above model of 1 stream -> 1 consumer.
@@ -49,6 +46,7 @@ random identifier.
 Redis List with the key name "consumer:ids"
 and ensure that only active consumer ids are
 in the list.
+    - [Lists](https://redis.io/docs/latest/develop/data-types/lists/)
 
 - Important! Please consider your solution's
 scalability. As the number of consumers
