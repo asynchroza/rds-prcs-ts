@@ -1,0 +1,11 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis_publisher
+    restart: always
+    ports:
+      - ${REDIS_PORT}:6379
+    env_file:
+      - .env.publisher
+    command: ["redis-server", "--appendonly", "yes"]
+
