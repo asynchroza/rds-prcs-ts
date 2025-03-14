@@ -1,0 +1,9 @@
+{
+  "name": "rds-prcs-ts",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "repository": "git@github.com:asynchroza/rds-prcs-ts.git",
+  "author": "Michael Bozhilov <michaelbozhilov@gmail.com>",
+  "license": "MIT",
+  "private": true
+}
