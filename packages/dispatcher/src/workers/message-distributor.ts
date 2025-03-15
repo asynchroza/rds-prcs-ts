@@ -17,7 +17,7 @@ type DistributorWorkerData = {
     consumerGroupManager.setConsumers(consumers);
 
     await client.SUBSCRIBE("messages:published", (message) => {
-        const connection = consumerGroupManager.getNextConnection()
-        connection?.connection.write(`Sending message to ${connection.url}: ${message}`)
+        const consumer = consumerGroupManager.getNextAvailableConsumer()
+        consumer?.connection.write(`Sending message to ${consumer.url}: ${message}`)
     })
 })()

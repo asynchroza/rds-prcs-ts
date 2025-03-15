@@ -35,7 +35,7 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
             const connection = liveConnections[currentIndex];
 
             if (connection.closed) {
-                return manager.getNextConnection();
+                return manager.getNextAvailableConsumer();
             }
 
             currentIndex = (currentIndex + 1) % liveConnections.length;
@@ -48,14 +48,14 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
 export class ConsumerGroupManager {
     private connections: Record<string, Consumer> = {};
     private _liveConnections: Consumer[] = []; // Consumer reference or url?
-    public getNextConnection: () => Consumer | undefined;
+    public getNextAvailableConsumer: () => Consumer | undefined;
 
     constructor(
         private redisClient: ReturnType<typeof createClient>,
         getNextAvailableConsumerStrategy: GetNextAvailableConsumerStrategy,
         private tcpClient = new net.Socket()
     ) {
-        this.getNextConnection = getNextAvailableConsumerStrategy(this);
+        this.getNextAvailableConsumer = getNextAvailableConsumerStrategy(this);
     }
 
     private dequeueConnection(consumerUrl: string) {
