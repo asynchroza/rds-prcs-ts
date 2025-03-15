@@ -4,7 +4,7 @@ import { Result } from "../types";
 const LEADER_KEY = "leadership_lock";
 
 export class LeadershipAcquirer {
-    constructor(private client: ReturnType<typeof createClient>, private leaderIdentifier: string) { }
+    constructor(private client: ReturnType<typeof createClient>, private leaderIdentifier: string, private lockRenewalInterval: any) { }
 
     async acquireLeadership(ttl: number): Promise<Result<boolean>> {
         try {
@@ -66,5 +66,47 @@ export class LeadershipAcquirer {
         }
 
         return { ok: true, value: result.value === null };
+    }
+
+    async acquireLeadershipOnRelease(ttl: number, checkIntervalInSeconds: number) {
+        this.lockRenewalInterval = setInterval(async () => {
+            const isReleasedResult = await this.checkIsLockReleased();
+
+            if (!isReleasedResult.ok) {
+                console.error("Error checking lock release:", isReleasedResult.error);
+                return;
+            }
+
+            if (isReleasedResult.value) {
+                console.log("Lock released, attempting to acquire...");
+
+                const acquireResult = await this.acquireLeadership(ttl);
+
+                if (acquireResult.ok && acquireResult.value) {
+                    console.log("Successfully acquired leadership lock!");
+
+                    await this.startRenewingLeadership(ttl, checkIntervalInSeconds);
+                } else {
+                    console.log("Failed to acquire leadership lock.");
+                }
+            }
+        }, checkIntervalInSeconds);
+    }
+
+    private async startRenewingLeadership(ttl: number, checkIntervalInSeconds: number): Promise<void> {
+        if (this.lockRenewalInterval) {
+            clearInterval(this.lockRenewalInterval);
+        }
+
+        const renewalInterval = setInterval(async () => {
+            const renewalResult = await this.renewLeadership(ttl);
+
+            if (!renewalResult.ok || !renewalResult.value) {
+                console.error("Failed to renew leadership lock.");
+                clearInterval(renewalInterval);
+            } else {
+                console.log("Leadership lock renewed successfully.");
+            }
+        }, checkIntervalInSeconds);
     }
 }
