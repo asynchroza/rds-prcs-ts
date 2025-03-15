@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import { Result } from "../types";
 
 const LEADER_KEY = "leadership_lock";
 
