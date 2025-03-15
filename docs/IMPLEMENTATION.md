@@ -6,7 +6,7 @@
 - The **message_id** property in the JSON payload sent by the publisher has no intrinsic meaning. We're assuming it corresponds to the underlying system generating the messages, 
     such as an IoT device or a broker and has nothing to do with our distribution system. 
     Identifying these messages is our responsibility and there's no requirements that we use the **message_id** property. 
-    The reason for this is to to offload all deserialization and CPU-intensive tasks to the workers.
+    The reason for not using the **message_id** is to offload all deserialization and CPU-intensive tasks to the processing services.
 
 ## Dispatcher Leader with Processing Workers writing to a Redis Cluster
 
@@ -36,3 +36,33 @@ Once the message is written to the stream, the worker acknowledges the message.
     (also it doesn't make sense to have a dispatcher leader if we could do a direct subscription between the server and the processing workers)
         - We're entering Redis Consumer Group territory, Redis is handling the distribution of the messages i.e. the dispatcher is embedded within the Redis process (i.e. `XREADGROUP` with consumer id)
 
+## Dispatcher Architecture
+
+- Node process which tries to acquire the leader lock from Redis. 
+If acquired, it spawns three worker threads - one is suscribed to the pubsub channel and routes messages, second is listening for ACKs and third is
+processing pending messages by republishing them. We don't have a guarantee that all of these would run in parallel but it's a good starting point. 
+The main thread is responsible for acquiring the lock, starting and shutting down worker threads based on the lock state.
+
+### Message Routing 
+
+- The node process is fed a configuration file with all available consumers
+    - Consumer IDs will be `host:port`
+- After a message is received on the channel, assign a new ID to the message, distribute to next consumer
+  in queue.
+- Message is delivered over a connection using the [custom protocol](#custom-protocol)
+
+### Listening for ACKs
+
+- Listening on a port - How to make sure that leader receives the frames when we have multiple active dispatchers
+    - Replicative fan-out, new service?
+    - Can NGINX or Caddy do something of the sorts?
+- Consumers use the [custom protocol](#custom-protocol) to let us know they have acknowledged a message.
+
+### Redistribution of Unacknowledged Messages
+
+- Process is actively retrieving the latest values available for redistribution from the sorted hash set
+- Publishes the unacknowledge messages on the same pubsub channel and expires the entry from the set (it's expected that the message routing thread would set it anew if unprocessed)
+    - We have only one dispatcher concerned with redistributing the messages so as far we don't execute redistribution processes in parallel,
+        with redistributing the same message twice.
+
+## Custom Protocol
