@@ -2,7 +2,7 @@ import { createClient } from "redis";
 import { LeadershipAcquirer } from "./services/leadership-acquirer";
 import { environment } from "@asynchroza/common";
 
-const DISPATCHER_ID = environment.loadEnvironment("DISPATCHER_ID");
+const DISPATCHER_ID = crypto.randomUUID();
 const TTL_SECONDS = Number(environment.loadEnvironment("LEADERSHIP_TTL_IN_SECONDS"));
 
 (async () => {
