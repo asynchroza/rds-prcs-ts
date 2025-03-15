@@ -1,28 +1,75 @@
 import { createClient } from "redis";
 import net from 'net'
 
+/**
+ * TODO:
+ * - Retry establishing dead connections and moving them to live connetions -- filter over the map, do not introduce additional complexity with a separate queue
+ */
+
 type Consumer = {
     url: string;
     connection: net.Socket;
     closed: boolean;
 }
 
+type GetNextConnectionStrategy = (manager: ConsumerGroupManager) => () => Consumer | undefined;
+
+/**
+ * This is not encapsulating the connetions well. Consider moving them inside the class.
+ */
+export const getNextConnectionRoundRobinStrategy = () => {
+    let currentIndex = 0;
+
+    return (manager: ConsumerGroupManager) => {
+        return () => {
+            const liveConnections = manager.liveConnections;
+
+            if (liveConnections.length === 0) {
+                return;
+            }
+
+            if (currentIndex >= liveConnections.length) {
+                currentIndex = 0;
+            }
+
+            const connection = liveConnections[currentIndex];
+
+            currentIndex = (currentIndex + 1) % liveConnections.length;
+
+            return connection;
+        }
+    }
+}
+
 export class ConsumerGroupManager {
     private connections: Record<string, Consumer> = {};
-    private liveConnections: Consumer[] = []; // Consumer reference or url?
+    private _liveConnections: Consumer[] = []; // Consumer reference or url?
+    public getNextConnection: () => Consumer | undefined;
 
-    constructor(private redisClient: ReturnType<typeof createClient>, private tcpClient = new net.Socket()) { }
+    constructor(
+        private redisClient: ReturnType<typeof createClient>,
+        getNextConnectionStrategy: GetNextConnectionStrategy,
+        private tcpClient = new net.Socket()
+    ) {
+        // No need to curry at this point
+        this.getNextConnection = getNextConnectionStrategy(this);
+    }
 
     private dequeueConnection(consumerUrl: string) {
-        const index = this.liveConnections.indexOf(this.connections[consumerUrl]);
+        const index = this._liveConnections.indexOf(this.connections[consumerUrl]);
 
         if (index > -1) {
-            this.liveConnections.splice(index, 1);
+            this._liveConnections.splice(index, 1);
         }
     }
 
     private enqueueConnection(consumerUrl: string) {
-        this.liveConnections.push(this.connections[consumerUrl]);
+        this._liveConnections.push(this.connections[consumerUrl]);
+    }
+
+    // TODO: Figure out a bettter way to handle this. Cloning the array is not efficient and we're still exposing the internal reference to the consumers
+    get liveConnections() {
+        return [...this._liveConnections];
     }
 
     async setConsumers(consumers: string[]) {

@@ -1,6 +1,6 @@
 import { createClient } from "redis"
 import { workerData } from "worker_threads";
-import { ConsumerGroupManager } from "../services/consumer-group-manager";
+import { ConsumerGroupManager, getNextConnectionRoundRobinStrategy } from "../services/consumer-group-manager";
 
 type DistributorWorkerData = {
     redisUrl: string;
@@ -14,11 +14,12 @@ type DistributorWorkerData = {
     await client.connect();
 
     const consumers = (workerData as DistributorWorkerData).consumerUrls;
-    const consumerGroupManager = new ConsumerGroupManager(client);
+    const consumerGroupManager = new ConsumerGroupManager(client, getNextConnectionRoundRobinStrategy());
 
     consumerGroupManager.setConsumers(consumers);
 
     await client.SUBSCRIBE("messages:published", (message) => {
+        consumerGroupManager.getNextConnection()
         console.log(`Sending message to ${currentConsumerIndex++}: ${message}`);
     })
 })()
