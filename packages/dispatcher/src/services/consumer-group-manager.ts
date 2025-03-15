@@ -1,5 +1,6 @@
 import { createClient } from "redis";
 import net from 'net'
+import { inspect } from 'util'
 
 /**
  * TODO:
@@ -30,22 +31,24 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
                 return;
             }
 
-            if (currentIndex >= liveConnections.length) {
-                currentIndex = 0;
+            // Skip closed connections
+            while (liveConnections[currentIndex]?.closed) {
+                currentIndex = (currentIndex + 1) % liveConnections.length;
+                if (currentIndex === 0) break;
             }
 
             const connection = liveConnections[currentIndex];
 
-            if (connection.closed) {
-                return manager.getNextAvailableConsumer();
+            if (!connection || connection.closed) {
+                return;
             }
 
             currentIndex = (currentIndex + 1) % liveConnections.length;
 
             return connection;
-        }
-    }
-}
+        };
+    };
+};
 
 export class ConsumerGroupManager {
     private connections: Record<string, Consumer> = {};
@@ -114,20 +117,19 @@ export class ConsumerGroupManager {
             closed: false
         }
 
-        connection.on("error", async () => {
-            consumer.closed = true;
-            console.log("CLOSE", { live: this.connections })
-        }
-        )
-        // this.dequeueConnection(consumerUrl);
+        // connection.on("error", async () => {
+        //     consumer.closed = true;
+        //     console.log("CLOSE", { live: this.connections })
+        //     this.dequeueConnection(consumerUrl);
+        // })
 
-        connection.on("close", async () => {
-            consumer.closed = true;
+        connection.once("close", () => {
+            setImmediate(() => consumer.closed = true);
             console.log("CLOSE", { live: this.connections })
             // this.dequeueConnection(consumerUrl);
         })
 
-        connection.on("connect", () => {
+        connection.once("connect", () => {
             consumer.closed = false;
             this.enqueueConnection(consumerUrl);
         })
