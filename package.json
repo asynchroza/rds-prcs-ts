@@ -5,7 +5,7 @@
   "repository": "git@github.com:asynchroza/rds-prcs-ts.git",
   "author": "Michael Bozhilov <michaelbozhilov@gmail.com>",
   "scripts": {
-    "publisher:container:start": "cd publisher && docker-compose --env-file .env.publisher up --build -d"
+    "publisher:container:start": "cd publisher && docker-compose --env-file .env.publisher up --build -d",
     "publisher:start": "cd publisher && python3 publisher.py"
   },
   "license": "MIT",
