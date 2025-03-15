@@ -76,26 +76,34 @@ export class ConsumerGroupManager {
         return [...this._liveConnections];
     }
 
-    async setConsumers(consumers: string[]) {
-        // Clean up connections to avoid memory leaks
-        for (const [consumer, connection] of Object.entries(this.connections)) {
-            if (!consumers.includes(consumer)) {
-                // Connection might be active but it's not part of the consumers list
+    private addConsumerUrlsToRedisList(consumerUrls: string[]) {
+        return this.redisClient.LPUSH("consumer:urls", consumerUrls);
+    }
 
-                connection.connection.destroy();
-                delete this.connections[consumer];
+    private resetConsumerUrlsInRedisList() {
+        return this.redisClient.DEL("consumer:urls");
+    }
 
-                this.dequeueConnection(consumer);
-            }
-        }
-
-        for (const consumer of consumers) {
+    async setConsumers(consumerUrls: string[]) {
+        for (const consumer of consumerUrls) {
             if (!this.connections[consumer]) {
                 this.connections[consumer] = this.establishConnectionWithConsumer(consumer);
             }
         }
 
-        // TODO: Populate redis list
+        /**
+        * There is a bug I've spent too much time trying to figure out.
+        * When any redis client operation is executed within the connection's
+        * "connect" or "close" event handlers, 
+        * the event loop blocks.
+        *
+        * Regular async operations work fine.
+        *
+        * This is preventing me from synchronizing the connection state with the redis list upon
+        * immediate connection or disconnection.
+        */
+        await this.resetConsumerUrlsInRedisList();
+        await this.addConsumerUrlsToRedisList(consumerUrls);
     }
 
     private establishConnectionWithConsumer(consumerUrl: string) {
