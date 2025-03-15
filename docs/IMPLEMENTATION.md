@@ -47,7 +47,7 @@ The main thread is responsible for acquiring the lock, starting and shutting dow
 
 - The node process is fed a configuration file with all available consumers
     - Consumer IDs will be `host:port`
-- After a message is received on the channel, assign a new ID to the message, distribute to next consumer
+- After a message is received on the channel, assign an ID to the message, distribute to next consumer
   in queue.
 - Message is delivered over a connection using the [custom protocol](#custom-protocol)
 
@@ -66,3 +66,19 @@ The main thread is responsible for acquiring the lock, starting and shutting dow
         with redistributing the same message twice.
 
 ## Custom Protocol
+
+```
+ | Protocol Version (1 byte) | Command (1 byte) | Length (4 bytes) | Payload (variable length) |
+```
+
+### Commands
+
+| Command (Bits) | Name            | Description                                                                 |
+|----------------|-----------------|-----------------------------------------------------------------------------|
+| 0              | PROCESS_MESSAGE | Expects a payload consisting of a UUID4 identifier followed by a JSON payload of 54 ASCII characters (formatted as `UUID4:json_data`). |
+| 1              | ACK_MESSAGE     | Expects a payload consisting only of a UUID4 identifier.                   |
+
+
+## Consumer
+
+- Consumer must store processed message into a Redis Stream and acknowledge the message upon processing by sending `ACK_MESSAGE` and the corresponding ID given by the dispatcher.
