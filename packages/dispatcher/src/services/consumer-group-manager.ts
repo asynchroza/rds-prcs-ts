@@ -14,6 +14,8 @@ type Consumer = {
 
 type GetNextAvailableConsumerStrategy = (manager: ConsumerGroupManager) => () => Consumer | undefined;
 
+const CONSUMER_URLS_KEY = "consumer:urls";
+
 /**
  * This is not encapsulating the connetions well. Consider moving them inside the class.
  */
@@ -52,8 +54,7 @@ export class ConsumerGroupManager {
 
     constructor(
         private redisClient: ReturnType<typeof createClient>,
-        getNextAvailableConsumerStrategy: GetNextAvailableConsumerStrategy,
-        private tcpClient = new net.Socket()
+        getNextAvailableConsumerStrategy: GetNextAvailableConsumerStrategy
     ) {
         this.getNextAvailableConsumer = getNextAvailableConsumerStrategy(this);
     }
@@ -65,10 +66,14 @@ export class ConsumerGroupManager {
         if (index > -1) {
             this._liveConnections.splice(index, 1);
         }
+
+        Promise.resolve().then(() => this.deleteConsumerUrlFromDatabase(consumerUrl))
     }
 
-    private enqueueConnection(consumerUrl: string) {
+    private async enqueueConnection(consumerUrl: string) {
+        console.log(`Connected to ${consumerUrl}`);
         this._liveConnections.push(this.connections[consumerUrl]);
+        Promise.resolve().then(() => this.addConsumerUrlToDatabase(consumerUrl));
     }
 
     // TODO: Figure out a bettter way to handle this. Cloning the array is not efficient and we're still exposing the internal reference to the consumers
@@ -76,12 +81,16 @@ export class ConsumerGroupManager {
         return [...this._liveConnections];
     }
 
-    private addConsumerUrlsToRedisList(consumerUrls: string[]) {
-        return this.redisClient.LPUSH("consumer:urls", consumerUrls);
+    private addConsumerUrlToDatabase(consumerUrl: string) {
+        return this.redisClient.LPUSH(CONSUMER_URLS_KEY, consumerUrl);
+    }
+
+    private deleteConsumerUrlFromDatabase(consumerUrl: string) {
+        return this.redisClient.LREM(CONSUMER_URLS_KEY, 1, consumerUrl);
     }
 
     private resetConsumerUrlsInRedisList() {
-        return this.redisClient.DEL("consumer:urls");
+        return this.redisClient.DEL(CONSUMER_URLS_KEY);
     }
 
     async setConsumers(consumerUrls: string[]) {
@@ -91,31 +100,24 @@ export class ConsumerGroupManager {
             }
         }
 
-        /**
-        * There is a bug I've spent too much time trying to figure out.
-        * When any redis client operation is executed within the connection's
-        * "connect" or "close" event handlers, 
-        * the event loop blocks.
-        *
-        * Regular async operations work fine.
-        *
-        * This is preventing me from synchronizing the connection state with the redis list upon
-        * immediate connection or disconnection.
-        */
         await this.resetConsumerUrlsInRedisList();
-        await this.addConsumerUrlsToRedisList(consumerUrls);
     }
 
     private establishConnectionWithConsumer(consumerUrl: string) {
         const [host, port] = consumerUrl.split(":");
 
-        const connection = this.tcpClient.connect({ port: Number(port), host })
+        const connection = new net.Socket().connect({ port: Number(port), host })
 
         const consumer: Consumer = {
             url: consumerUrl,
             connection,
             closed: false
         }
+
+        connection.on("error", () => {
+            consumer.closed = true;
+            this.dequeueConnection(consumerUrl);
+        })
 
         connection.on("close", () => {
             consumer.closed = true;
@@ -124,7 +126,6 @@ export class ConsumerGroupManager {
 
         connection.on("connect", () => {
             consumer.closed = false;
-            console.log(`Connected to ${consumerUrl}`);
             this.enqueueConnection(consumerUrl);
         })
 

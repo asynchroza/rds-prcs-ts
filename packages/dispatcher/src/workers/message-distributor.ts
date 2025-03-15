@@ -14,9 +14,9 @@ type DistributorWorkerData = {
     const consumers = (workerData as DistributorWorkerData).consumerUrls;
     const consumerGroupManager = new ConsumerGroupManager(client, getNextAvailableConsumerRoundRobinStrategy());
 
-    consumerGroupManager.setConsumers(consumers);
+    await consumerGroupManager.setConsumers(consumers);
 
-    await client.SUBSCRIBE("messages:published", (message) => {
+    client.SUBSCRIBE("messages:published", (message) => {
         const consumer = consumerGroupManager.getNextAvailableConsumer()
         consumer?.connection.write(`Sending message to ${consumer.url}: ${message}`)
     })

@@ -7,7 +7,7 @@ import path from "path";
 const DISPATCHER_ID = crypto.randomUUID();
 const TTL_SECONDS = Number(environment.loadEnvironment("LEADERSHIP_TTL_IN_SECONDS"));
 const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL");
-const CONSUMER_URLS = ["localhost:6969"];
+const CONSUMER_URLS = ["localhost:6969", "localhost:7001"];
 
 /**
  * @qs
