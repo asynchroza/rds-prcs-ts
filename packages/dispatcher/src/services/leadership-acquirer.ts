@@ -112,7 +112,7 @@ export class LeadershipAcquirer {
                     console.log("Successfully acquired leadership lock!");
                     callbacks?.onLeadershipAcquire?.();
 
-                    await this.startRenewingLeadership(ttl, checkIntervalInSeconds);
+                    await this.startRenewingLeadership(ttl, checkIntervalInSeconds, callbacks);
                 } else {
                     console.log("Failed to acquire leadership lock.");
                 }
