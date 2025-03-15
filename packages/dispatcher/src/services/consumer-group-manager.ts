@@ -12,12 +12,12 @@ type Consumer = {
     closed: boolean;
 }
 
-type GetNextConnectionStrategy = (manager: ConsumerGroupManager) => () => Consumer | undefined;
+type GetNextAvailableConsumerStrategy = (manager: ConsumerGroupManager) => () => Consumer | undefined;
 
 /**
  * This is not encapsulating the connetions well. Consider moving them inside the class.
  */
-export const getNextConnectionRoundRobinStrategy = () => {
+export const getNextAvailableConsumerRoundRobinStrategy = () => {
     let currentIndex = 0;
 
     return (manager: ConsumerGroupManager) => {
@@ -52,10 +52,10 @@ export class ConsumerGroupManager {
 
     constructor(
         private redisClient: ReturnType<typeof createClient>,
-        getNextConnectionStrategy: GetNextConnectionStrategy,
+        getNextAvailableConsumerStrategy: GetNextAvailableConsumerStrategy,
         private tcpClient = new net.Socket()
     ) {
-        this.getNextConnection = getNextConnectionStrategy(this);
+        this.getNextConnection = getNextAvailableConsumerStrategy(this);
     }
 
     private dequeueConnection(consumerUrl: string) {

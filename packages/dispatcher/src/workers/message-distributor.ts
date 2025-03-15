@@ -1,6 +1,6 @@
 import { createClient } from "redis"
 import { workerData } from "worker_threads";
-import { ConsumerGroupManager, getNextConnectionRoundRobinStrategy } from "../services/consumer-group-manager";
+import { ConsumerGroupManager, getNextAvailableConsumerRoundRobinStrategy } from "../services/consumer-group-manager";
 
 type DistributorWorkerData = {
     redisUrl: string;
@@ -12,7 +12,7 @@ type DistributorWorkerData = {
     await client.connect();
 
     const consumers = (workerData as DistributorWorkerData).consumerUrls;
-    const consumerGroupManager = new ConsumerGroupManager(client, getNextConnectionRoundRobinStrategy());
+    const consumerGroupManager = new ConsumerGroupManager(client, getNextAvailableConsumerRoundRobinStrategy());
 
     consumerGroupManager.setConsumers(consumers);
 
