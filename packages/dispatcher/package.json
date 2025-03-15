@@ -1,7 +1,7 @@
 {
   "name": "dispatcher",
   "version": "0.0.1",
-  "main": "index.ts",
+  "main": "src/index.ts",
   "license": "MIT",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts"
@@ -13,5 +13,6 @@
   },
   "dependencies": {
     "redis": "^4.7.0"
-  }
+  },
+  "private": true
 }

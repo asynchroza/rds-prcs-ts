@@ -1,9 +1,10 @@
-import { RedisClientType } from "@redis/client";
+import { createClient } from "redis";
 
 const LEADER_KEY = "leadership_lock";
 
 export class LeadershipAcquirer {
-    constructor(private client: RedisClientType, private leaderIdentifier: string) { }
+    // RedisClientType is not assignable for some reason
+    constructor(private client: ReturnType<typeof createClient>, private leaderIdentifier: string) { }
 
     async acquireLeadership(ttl: number): Promise<Result<boolean>> {
         try {
