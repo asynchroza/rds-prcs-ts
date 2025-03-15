@@ -5,7 +5,7 @@ const LEADER_KEY = "leadership_lock";
 
 type IntervalCallbacks = {
     /**
-    * Callback to be called when this successfully renews its leadership 
+    * Callback to be called when this successfully renews its leadership.
     */
     onLeadershipRenewal?: () => void;
 

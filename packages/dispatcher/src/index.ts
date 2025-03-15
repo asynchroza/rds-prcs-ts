@@ -11,7 +11,17 @@ const TTL_SECONDS = Number(environment.loadEnvironment("LEADERSHIP_TTL_IN_SECOND
 
     const leadershipAcquirer = new LeadershipAcquirer(client, DISPATCHER_ID);
 
-    await leadershipAcquirer.acquireLeadershipOnRelease(TTL_SECONDS, TTL_SECONDS / 2);
+    await leadershipAcquirer.acquireLeadershipOnRelease(TTL_SECONDS, TTL_SECONDS / 2, {
+        onLeadershipLoss() {
+            console.log("Lost leadership");
+        },
+        onLeadershipAcquire() {
+            console.log("Acquired leadership");
+        },
+        onLeadershipRenewal() {
+            console.log("Renewed leadership");
+        }
+    });
 })();
 
 
