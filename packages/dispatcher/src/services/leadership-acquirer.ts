@@ -43,7 +43,12 @@ export class LeadershipAcquirer {
                 return { ok: false, error: new Error("Only leader can renew the lock") };
             }
 
-            return this.acquireLeadership(ttl);
+            const result = await this.client.SET(LEADER_KEY, this.leaderIdentifier, {
+                EX: ttl,
+                XX: true // Set if exists
+            });
+
+            return { ok: true, value: result === "OK" };
         } catch (error) {
             return { ok: false, error: error instanceof Error ? error : new Error(String(error)) };
         }
