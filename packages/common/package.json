@@ -1,5 +1,5 @@
 {
-  "name": "dispatcher",
+  "name": "@asynchroza/common",
   "version": "0.0.1",
   "main": "src/index.ts",
   "license": "MIT",
@@ -11,10 +11,8 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },
+  "private": true,
   "dependencies": {
-    "@types/node": "^22.13.10",
-    "@asynchroza/common": "*",
-    "redis": "^4.7.0"
-  },
-  "private": true
+    "@types/node": "^22.13.10"
+  }
 }
