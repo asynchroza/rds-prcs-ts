@@ -1,0 +1,19 @@
+{
+  "name": "consumer",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "license": "MIT",
+  "scripts": {
+    "dev": "nodemon --exec node -r ts-node/register --env-file=.env.sample src/index.ts"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@types/node": "^22.13.10",
+    "@asynchroza/common": "*"
+  },
+  "private": true
+}
