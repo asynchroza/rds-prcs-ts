@@ -3,6 +3,26 @@ import { Result } from "../types";
 
 const LEADER_KEY = "leadership_lock";
 
+type IntervalCallbacks = {
+    /**
+    * Callback to be called when this successfully renews its leadership 
+    */
+    onLeadershipRenewal?: () => void;
+
+    /**
+    * Callback to be called when this dispatcher instance acquires a new leadership.
+    *
+    * @note Difference between this and `onLeadershipRenewal` is that this is only 
+    * called if the previous leadership instance is different from the current one (i.e. this process)
+    */
+    onLeadershipAcquire?: () => void;
+
+    /**
+    * Callback to be called when this dispatcher instance loses leadership
+    */
+    onLeadershipLoss?: () => void;
+}
+
 export class LeadershipAcquirer {
     private lockRenewalInterval: NodeJS.Timeout | null = null;
     constructor(private client: ReturnType<typeof createClient>, private leaderIdentifier: string) { }
@@ -74,7 +94,7 @@ export class LeadershipAcquirer {
         return { ok: true, value: result.value === null };
     }
 
-    async acquireLeadershipOnRelease(ttl: number, checkIntervalInSeconds: number) {
+    async acquireLeadershipOnRelease(ttl: number, checkIntervalInSeconds: number, callbacks?: IntervalCallbacks) {
         this.lockRenewalInterval = setInterval(async () => {
             const isReleasedResult = await this.checkIsLockReleased();
 
@@ -90,6 +110,7 @@ export class LeadershipAcquirer {
 
                 if (acquireResult.ok && acquireResult.value) {
                     console.log("Successfully acquired leadership lock!");
+                    callbacks?.onLeadershipAcquire?.();
 
                     await this.startRenewingLeadership(ttl, checkIntervalInSeconds);
                 } else {
@@ -99,7 +120,7 @@ export class LeadershipAcquirer {
         }, checkIntervalInSeconds * 1000);
     }
 
-    private async startRenewingLeadership(ttl: number, checkIntervalInSeconds: number): Promise<void> {
+    private async startRenewingLeadership(ttl: number, checkIntervalInSeconds: number, callback?: IntervalCallbacks): Promise<void> {
         if (this.lockRenewalInterval) {
             clearInterval(this.lockRenewalInterval);
         }
@@ -110,6 +131,7 @@ export class LeadershipAcquirer {
             if (!renewalResult.ok || !renewalResult.value) {
                 console.error("Failed to renew leadership lock.");
                 clearInterval(renewalInterval);
+                callback?.onLeadershipLoss?.();
 
                 console.debug("Starting to monitor lock release again...");
                 await this.acquireLeadershipOnRelease(ttl, checkIntervalInSeconds);
