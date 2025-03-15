@@ -34,6 +34,10 @@ export const getNextConnectionRoundRobinStrategy = () => {
 
             const connection = liveConnections[currentIndex];
 
+            if (connection.closed) {
+                return manager.getNextConnection();
+            }
+
             currentIndex = (currentIndex + 1) % liveConnections.length;
 
             return connection;
@@ -51,7 +55,6 @@ export class ConsumerGroupManager {
         getNextConnectionStrategy: GetNextConnectionStrategy,
         private tcpClient = new net.Socket()
     ) {
-        // No need to curry at this point
         this.getNextConnection = getNextConnectionStrategy(this);
     }
 

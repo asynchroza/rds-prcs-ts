@@ -7,6 +7,7 @@ import path from "path";
 const DISPATCHER_ID = crypto.randomUUID();
 const TTL_SECONDS = Number(environment.loadEnvironment("LEADERSHIP_TTL_IN_SECONDS"));
 const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL");
+const CONSUMER_URLS = ["localhost:6969"];
 
 /**
  * @qs
@@ -21,6 +22,9 @@ const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL");
 
     let workers: Worker[] | undefined;
 
+    // TODO: Expand on this, pass as argument to acquirer, acquirer should reset once leadership is lost
+    const mutex = { shouldGiveUpLeadership: false };
+
     await leadershipAcquirer.acquireLeadershipOnRelease(TTL_SECONDS, TTL_SECONDS / 2, {
         onLeadershipLoss() {
             workers?.forEach(worker => worker.terminate());
@@ -28,10 +32,12 @@ const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL");
         },
         onLeadershipAcquire() {
             workers = []; // TODO: Possible leakage here - unterminated workers
-            workers.push(new Worker(path.join(__dirname, "workers/message-distributor.ts"), { workerData: { redisUrl: REDIS_PUBLISHER_URL } }));
-        },
-        onLeadershipRenewal() {
-            console.log("Renewed leadership");
+            workers.push(
+                new Worker(path.join(__dirname, "workers/message-distributor.ts"),
+                    { workerData: { redisUrl: REDIS_PUBLISHER_URL, consumerUrls: CONSUMER_URLS } })
+                    .on("error", () => {
+                        mutex.shouldGiveUpLeadership = true;
+                    }));
         }
     });
 })();

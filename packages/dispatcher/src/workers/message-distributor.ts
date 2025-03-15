@@ -8,8 +8,6 @@ type DistributorWorkerData = {
 }
 
 (async () => {
-    let currentConsumerIndex = 0;
-
     const client = createClient({ url: (workerData as DistributorWorkerData).redisUrl })
     await client.connect();
 
@@ -19,7 +17,7 @@ type DistributorWorkerData = {
     consumerGroupManager.setConsumers(consumers);
 
     await client.SUBSCRIBE("messages:published", (message) => {
-        consumerGroupManager.getNextConnection()
-        console.log(`Sending message to ${currentConsumerIndex++}: ${message}`);
+        const connection = consumerGroupManager.getNextConnection()
+        connection?.connection.write(`Sending message to ${connection.url}: ${message}`)
     })
 })()
