@@ -59,6 +59,7 @@ export class ConsumerGroupManager {
     }
 
     private dequeueConnection(consumerUrl: string) {
+        console.log(`Disconnected from ${consumerUrl}`);
         const index = this._liveConnections.indexOf(this.connections[consumerUrl]);
 
         if (index > -1) {
@@ -108,22 +109,7 @@ export class ConsumerGroupManager {
             closed: false
         }
 
-        connection.on("error", () => {
-            consumer.closed = true;
-            this.dequeueConnection(consumerUrl);
-        })
-
         connection.on("close", () => {
-            consumer.closed = true;
-            this.dequeueConnection(consumerUrl);
-        })
-
-        connection.on("end", () => {
-            consumer.closed = true;
-            this.dequeueConnection(consumerUrl);
-        })
-
-        connection.on("timeout", () => {
             consumer.closed = true;
             this.dequeueConnection(consumerUrl);
         })
