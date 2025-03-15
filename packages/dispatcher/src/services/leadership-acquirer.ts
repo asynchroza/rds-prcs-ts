@@ -4,7 +4,8 @@ import { Result } from "../types";
 const LEADER_KEY = "leadership_lock";
 
 export class LeadershipAcquirer {
-    constructor(private client: ReturnType<typeof createClient>, private leaderIdentifier: string, private lockRenewalInterval: any) { }
+    private lockRenewalInterval: NodeJS.Timeout | null = null;
+    constructor(private client: ReturnType<typeof createClient>, private leaderIdentifier: string) { }
 
     async acquireLeadership(ttl: number): Promise<Result<boolean>> {
         try {
@@ -90,7 +91,7 @@ export class LeadershipAcquirer {
                     console.log("Failed to acquire leadership lock.");
                 }
             }
-        }, checkIntervalInSeconds);
+        }, checkIntervalInSeconds * 1000);
     }
 
     private async startRenewingLeadership(ttl: number, checkIntervalInSeconds: number): Promise<void> {
@@ -104,9 +105,12 @@ export class LeadershipAcquirer {
             if (!renewalResult.ok || !renewalResult.value) {
                 console.error("Failed to renew leadership lock.");
                 clearInterval(renewalInterval);
+
+                console.debug("Starting to monitor lock release again...");
+                await this.acquireLeadershipOnRelease(ttl, checkIntervalInSeconds);
             } else {
                 console.log("Leadership lock renewed successfully.");
             }
-        }, checkIntervalInSeconds);
+        }, checkIntervalInSeconds * 1000);
     }
 }
