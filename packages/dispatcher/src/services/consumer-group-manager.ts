@@ -114,14 +114,17 @@ export class ConsumerGroupManager {
             closed: false
         }
 
-        connection.on("error", () => {
+        connection.on("error", async () => {
             consumer.closed = true;
-            this.dequeueConnection(consumerUrl);
-        })
+            console.log("CLOSE", { live: this.connections })
+        }
+        )
+        // this.dequeueConnection(consumerUrl);
 
-        connection.on("close", () => {
+        connection.on("close", async () => {
             consumer.closed = true;
-            this.dequeueConnection(consumerUrl);
+            console.log("CLOSE", { live: this.connections })
+            // this.dequeueConnection(consumerUrl);
         })
 
         connection.on("connect", () => {

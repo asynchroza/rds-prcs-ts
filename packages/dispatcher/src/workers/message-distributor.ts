@@ -18,6 +18,7 @@ type DistributorWorkerData = {
 
     client.SUBSCRIBE("messages:published", (message) => {
         const consumer = consumerGroupManager.getNextAvailableConsumer()
-        consumer?.connection.write(`Sending message to ${consumer.url}: ${message}`)
+        console.log(`Sending message to ${consumer?.url}: ${message}\n`)
+        consumer?.connection.write(`${consumer.url}: ${message}\n`)
     })
 })()
