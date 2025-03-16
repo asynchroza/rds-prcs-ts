@@ -134,6 +134,9 @@ export class ConsumerGroupManager {
     * Appends the appropriate event listeners to the connection which would handle
     * trying to re-establish the connection in case of a disconnect and pushing the 
     * identifier to the Database.
+    *
+    * TODO: This one and the one below could be merged into one method.
+    * But I spent too much time debugging blocking event loops I got to moveee.
     */
     private establishConnectionWithConsumer(consumerUrl: string) {
         const [host, port] = consumerUrl.split(":");
