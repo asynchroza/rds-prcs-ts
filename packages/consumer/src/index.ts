@@ -1,9 +1,8 @@
 import { environment, nonameproto } from '@asynchroza/common'
 import { COMMANDS_TO_BINARY } from '@asynchroza/common/src/nonameproto'
 import { createClient } from 'redis'
-import net from 'net'
 import { sleep, wsUtils } from '@asynchroza/common/src/utils'
-import { Server } from 'ws'
+import { Server, WebSocket } from 'ws'
 
 const CONSUMER_PORT = environment.loadEnvironment("CONSUMER_PORT")
 const POSSIBLE_ACK_HOSTS = environment.loadEnvironment("ACK_HOSTS").split(',').map(host => {
@@ -13,26 +12,34 @@ const POSSIBLE_ACK_HOSTS = environment.loadEnvironment("ACK_HOSTS").split(',').m
 })
 const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL")
 
-let ackSocket: net.Socket | undefined;
+let ackSocket: WebSocket | undefined;
 
 function connectToAcknowledger(hosts: { hostName: string; port: number }[], index = 0) {
     if (index >= hosts.length) {
         throw new Error("Could not connect to any of the provided hosts");
     }
 
-    const socket = new net.Socket();
     const host = hosts[index];
+    const url = `ws://${host.hostName}:${host.port}`; // Assuming WebSocket runs on ws://
 
-    socket.connect(host.port, host.hostName, () => {
+    console.log(`Connecting to acknowledger: ${url}`);
+
+    const socket = new WebSocket(url);
+
+    socket.onopen = (() => {
         console.log(`Connected to acknowledger@${host.hostName}:${host.port}`);
         ackSocket = socket;
     });
 
-    socket.once("error", () => {
+    socket.onerror = () => {
         console.log(`${host.hostName}:${host.port} failed, trying next acknowledger host...`);
-        socket.destroy();
+        socket.close();
         connectToAcknowledger(hosts, index + 1);
-    });
+    };
+
+    socket.onclose = () => {
+        throw new Error("Connection to acknowledger closed unexpectedly");
+    };
 }
 
 connectToAcknowledger(POSSIBLE_ACK_HOSTS);
@@ -48,7 +55,10 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
         throw new Error("Could not connect to any of the provided acknowledger hosts");
     }
 
-    ackSocket.on("close", () => { throw new Error("Acknowledger connection closed unexpectedly") });
+    ackSocket.onerror = () => {
+        throw new Error("Error with connection to acknowledger");
+    }
+
 
     let messageCount = 0;
 
@@ -82,7 +92,7 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
             deserializedMessage.consumer_id = `localhost:${CONSUMER_PORT}`
 
             redisClient.XADD("messages:processed", "*", deserializedMessage).then(() => {
-                ackSocket!.write(message)
+                ackSocket!.send(message)
                 console.log(`Processed ${++messageCount} messages`);
                 console.log(`Message with id ${deserializedMessage.message_id} processed and saved to Redis`);
             })
