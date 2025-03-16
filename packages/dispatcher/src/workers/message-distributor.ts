@@ -8,6 +8,7 @@ type DistributorWorkerData = {
 }
 
 (async () => {
+    // TODO: Check if connection pooling is will help here
     const publisherclient = createClient({ url: (workerData as DistributorWorkerData).redisUrl })
     await publisherclient.connect();
 
