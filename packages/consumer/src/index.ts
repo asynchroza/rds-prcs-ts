@@ -50,6 +50,7 @@ const srv = net.createServer((socket) => {
         // No need to waste resources on encoding when we can just swap out the
         // command byte as the message is pretty much the same
         const message = new Uint8Array(data.buffer)
+        nonameproto.encode("ACK", result.value.message)
         message[1] = COMMANDS_TO_BINARY.get("ACK")!
 
         ackSocket.write(message)

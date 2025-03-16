@@ -3,7 +3,7 @@ import { workerData } from "worker_threads";
 import { ConsumerGroupManager, getNextAvailableConsumerRoundRobinStrategy } from "../services/consumer-group-manager";
 import { MessageHandler } from "../services/message-handler";
 import assert from "assert";
-import { encode } from "punycode";
+import { nonameproto } from "@asynchroza/common";
 
 type DistributorWorkerData = {
     redisUrl: string;
@@ -33,13 +33,9 @@ type DistributorWorkerData = {
         }
 
         console.log(`Sending message to ${consumer?.url}`)
+
         const encodedMessage = messageHandler.encodeProcessMessage(message)
-
-        if (!encodedMessage.ok) {
-            console.error(encodedMessage.error)
-        }
-
-        assert(encodedMessage.ok, "Failed to encode message")
+        assert(encodedMessage.ok)
 
         consumer.connection.write(encodedMessage.value)
     })

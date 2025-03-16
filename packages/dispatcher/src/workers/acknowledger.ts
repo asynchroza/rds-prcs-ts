@@ -24,8 +24,8 @@ import { MessageHandler } from "../services/message-handler";
                 return console.log("Received message that is not an ACK");
             }
 
-            messageHandler.removeMessageFromSortedSet(message.value.message).then(() => {
-                console.log(`Message ${message.value.message} was acknowledged`);
+            messageHandler.removeMessageFromSortedSet(message.value.message).then((result) => {
+                console.log(`${result} - Message ${message.value.message} was acknowledged`);
             });
         })
         // Bubble up the error to main thread to stop acquirer from claiming leadership
@@ -33,5 +33,5 @@ import { MessageHandler } from "../services/message-handler";
 
     srv.listen(acknowledgerPort, () => {
         console.log(`Acknowledger bound on port ${acknowledgerPort}`)
-    });
+    }).on("error", (err) => { throw err });
 })();
