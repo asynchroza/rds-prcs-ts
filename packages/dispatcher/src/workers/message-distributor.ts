@@ -17,7 +17,6 @@ type DistributorWorkerData = {
 
     await Promise.all([publisherclient.connect(), consumerClient.connect()]);
 
-    const consumers = (workerData as DistributorWorkerData).consumerUrls;
     const consumerGroupManager = new ConsumerGroupManager(consumerClient, getNextAvailableConsumerRoundRobinStrategy());
     const messageHandler = new MessageHandler(consumerClient);
 
