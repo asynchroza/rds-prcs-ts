@@ -34,10 +34,10 @@ const createWorker = (workerFileNameWoExt: string, workerData: any, mutex: { sho
     // TODO: Expand on this, pass as argument to acquirer, acquirer should reset once leadership is lost
     const mutex = { shouldGiveUpLeadership: false };
 
-    await leadershipAcquirer.acquireLeadershipOnRelease(TTL_SECONDS, TTL_SECONDS / 2, {
+    await leadershipAcquirer.acquireLeadershipOnRelease(mutex, TTL_SECONDS, 1, {
         onLeadershipLoss() {
-            workers?.forEach(worker => worker.terminate());
             console.log("Lost leadership");
+            workers?.forEach(worker => worker.terminate());
         },
         onLeadershipAcquire() {
             if (workers && workers?.length > 0) {

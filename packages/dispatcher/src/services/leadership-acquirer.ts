@@ -94,7 +94,9 @@ export class LeadershipAcquirer {
         return { ok: true, value: result.value === null };
     }
 
-    async acquireLeadershipOnRelease(ttl: number, checkIntervalInSeconds: number, callbacks?: IntervalCallbacks) {
+    async acquireLeadershipOnRelease(mutex: { shouldGiveUpLeadership: boolean }, ttl: number, checkIntervalInSeconds: number, callbacks?: IntervalCallbacks) {
+        mutex.shouldGiveUpLeadership = false;
+
         this.lockRenewalInterval = setInterval(async () => {
             const isReleasedResult = await this.checkIsLockReleased();
 
@@ -112,7 +114,7 @@ export class LeadershipAcquirer {
                     console.log("Successfully acquired leadership lock!");
                     callbacks?.onLeadershipAcquire?.();
 
-                    await this.startRenewingLeadership(ttl, checkIntervalInSeconds, callbacks);
+                    await this.startRenewingLeadership(mutex, ttl, checkIntervalInSeconds, callbacks);
                 } else {
                     console.log("Failed to acquire leadership lock.");
                 }
@@ -120,12 +122,21 @@ export class LeadershipAcquirer {
         }, checkIntervalInSeconds * 1000);
     }
 
-    private async startRenewingLeadership(ttl: number, checkIntervalInSeconds: number, callback?: IntervalCallbacks): Promise<void> {
+    private async startRenewingLeadership(mutex: { shouldGiveUpLeadership: boolean }, ttl: number, checkIntervalInSeconds: number, callback?: IntervalCallbacks): Promise<void> {
         if (this.lockRenewalInterval) {
             clearInterval(this.lockRenewalInterval);
         }
 
         const renewalInterval = setInterval(async () => {
+            // Do not even try to renew if we are requested to give up leadership
+            if (mutex.shouldGiveUpLeadership) {
+                console.log("Mutex requested to give up leadership, stopping renewal...");
+                clearInterval(renewalInterval);
+                mutex.shouldGiveUpLeadership = false;
+                callback?.onLeadershipLoss?.();
+                await this.acquireLeadershipOnRelease(mutex, ttl, checkIntervalInSeconds);
+            }
+
             const renewalResult = await this.renewLeadership(ttl);
 
             if (!renewalResult.ok || !renewalResult.value) {
@@ -134,7 +145,7 @@ export class LeadershipAcquirer {
                 callback?.onLeadershipLoss?.();
 
                 console.debug("Starting to monitor lock release again...");
-                await this.acquireLeadershipOnRelease(ttl, checkIntervalInSeconds);
+                await this.acquireLeadershipOnRelease(mutex, ttl, checkIntervalInSeconds);
             } else {
                 console.log("Leadership lock renewed successfully.");
             }

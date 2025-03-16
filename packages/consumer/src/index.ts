@@ -36,10 +36,6 @@ function connectToAcknowledger(hosts: { hostName: string; port: number }[], inde
         socket.close();
         connectToAcknowledger(hosts, index + 1);
     };
-
-    socket.onclose = () => {
-        throw new Error("Connection to acknowledger closed unexpectedly");
-    };
 }
 
 connectToAcknowledger(POSSIBLE_ACK_HOSTS);
@@ -57,6 +53,10 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
 
     ackSocket.onerror = () => {
         throw new Error("Error with connection to acknowledger");
+    }
+
+    ackSocket.onclose = () => {
+        throw new Error("Connection to acknowledger closed unexpectedly");
     }
 
 
