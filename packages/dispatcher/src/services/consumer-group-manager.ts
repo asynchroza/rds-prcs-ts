@@ -175,7 +175,7 @@ export class ConsumerGroupManager {
             });
     }
 
-    regularlyReconnectDeadClients() {
+    reconnectDeadConsumers() {
         for (const connection of Object.values(this.connections)) {
             if (connection.closed) {
                 this.reconnectToConsumer(connection);
