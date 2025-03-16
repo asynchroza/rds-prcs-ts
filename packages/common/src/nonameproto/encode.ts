@@ -1,3 +1,4 @@
+import { types } from "..";
 import { Commands, COMMANDS_TO_BINARY } from "./commands";
 import { PROTO_VERSION } from "./constants";
 
@@ -5,13 +6,22 @@ function getBuffer(message: Uint8Array<ArrayBufferLike>) {
     return new ArrayBuffer(1 + 1 + 4 + message.byteLength);
 }
 
-export function encode(operation: Commands, message: string) {
+export function encode(operation: Commands, message: string): types.Result<Uint8Array> {
     const messageBuffer = new TextEncoder().encode(message);
 
     const buffer = getBuffer(messageBuffer);
     const view = new DataView(buffer);
 
     view.setUint8(0, PROTO_VERSION);
+
+    const command = COMMANDS_TO_BINARY.get(operation);
+
+    if (!command) {
+        return {
+            ok: false, error: new Error("Invalid command")
+        }
+    }
+
     view.setUint8(1, COMMANDS_TO_BINARY.get(operation)!);
     view.setUint32(2, messageBuffer.byteLength, true);
 
@@ -19,5 +29,5 @@ export function encode(operation: Commands, message: string) {
         view.setUint8(6 + i, messageBuffer[i]);
     }
 
-    return new Uint8Array(buffer);
+    return { ok: true, value: new Uint8Array(buffer) };
 }

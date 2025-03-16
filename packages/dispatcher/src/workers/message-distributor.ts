@@ -2,6 +2,7 @@ import { createClient } from "redis"
 import { workerData } from "worker_threads";
 import { ConsumerGroupManager, getNextAvailableConsumerRoundRobinStrategy } from "../services/consumer-group-manager";
 import { MessageHandler } from "../services/message-handler";
+import assert from "assert";
 
 type DistributorWorkerData = {
     redisUrl: string;
@@ -26,10 +27,16 @@ type DistributorWorkerData = {
         const consumer = consumerGroupManager.getNextAvailableConsumer()
         messageHandler.addMessageToSortedSet(message);
 
-        console.log(`Sending message to ${consumer?.url}: ${message}\n`)
+        if (!consumer) {
+            return console.warn("There were no available consumers to send the message to. It's queued for later processing")
+        }
+
+        console.log(`Sending message to ${consumer?.url}`)
         const encodedMessage = messageHandler.encodeMessage(message)
-        console.log(encodedMessage)
-        consumer?.connection.write(encodedMessage)
+
+        assert(encodedMessage.ok)
+
+        consumer.connection.write(encodedMessage.value)
     })
 
     setInterval(() => consumerGroupManager.reconnectDeadConsumers(), 2000)
