@@ -1,6 +1,7 @@
 import { createClient } from "redis";
 import net from 'net'
 import { inspect } from 'util'
+import { nextTick } from "process";
 
 /**
  * TODO:
@@ -31,8 +32,13 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
                 return;
             }
 
+            if (currentIndex >= liveConnections.length) {
+                currentIndex = 0;
+            }
+
             // Skip closed connections
             while (liveConnections[currentIndex]?.closed) {
+                // TODO: Fix edge case when we're past the middle of the array and all the connections are closed
                 currentIndex = (currentIndex + 1) % liveConnections.length;
                 if (currentIndex === 0) break;
             }
@@ -62,7 +68,7 @@ export class ConsumerGroupManager {
         this.getNextAvailableConsumer = getNextAvailableConsumerStrategy(this);
     }
 
-    private dequeueConnection(consumerUrl: string) {
+    private async dequeueConnection(consumerUrl: string) {
         console.log(`Disconnected from ${consumerUrl}`);
         const index = this._liveConnections.indexOf(this.connections[consumerUrl]);
 
@@ -70,13 +76,15 @@ export class ConsumerGroupManager {
             this._liveConnections.splice(index, 1);
         }
 
-        Promise.resolve().then(() => this.deleteConsumerUrlFromDatabase(consumerUrl))
+        // TODO: I cannot figure out what's happening with the event loop here.
+        // This is blocking and subscription processing stops
+        // return await this.deleteConsumerUrlFromDatabase(consumerUrl);
     }
 
     private async enqueueConnection(consumerUrl: string) {
         console.log(`Connected to ${consumerUrl}`);
         this._liveConnections.push(this.connections[consumerUrl]);
-        Promise.resolve().then(() => this.addConsumerUrlToDatabase(consumerUrl));
+        this.addConsumerUrlToDatabase(consumerUrl);
     }
 
     // TODO: Figure out a bettter way to handle this. Cloning the array is not efficient and we're still exposing the internal reference to the consumers
@@ -117,21 +125,14 @@ export class ConsumerGroupManager {
             closed: false
         }
 
-        // connection.on("error", async () => {
-        //     consumer.closed = true;
-        //     console.log("CLOSE", { live: this.connections })
-        //     this.dequeueConnection(consumerUrl);
-        // })
-
-        connection.once("close", () => {
-            setImmediate(() => consumer.closed = true);
-            console.log("CLOSE", { live: this.connections })
-            // this.dequeueConnection(consumerUrl);
+        connection.once("close", async () => {
+            consumer.closed = true;
+            await this.dequeueConnection(consumerUrl);
         })
 
         connection.once("connect", () => {
             consumer.closed = false;
-            this.enqueueConnection(consumerUrl);
+            process.nextTick(() => this.enqueueConnection(consumerUrl));
         })
 
         return consumer;
