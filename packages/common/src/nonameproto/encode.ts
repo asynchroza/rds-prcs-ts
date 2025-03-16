@@ -16,9 +16,11 @@ export function encode(operation: Commands, message: string): types.Result<Uint8
 
     const command = COMMANDS_TO_BINARY.get(operation);
 
-    if (!command) {
+    // 0 IS A FALSY VALUE!!!
+    if (command === undefined) {
+        console.error(COMMANDS_TO_BINARY)
         return {
-            ok: false, error: new Error("Invalid command")
+            ok: false, error: new Error(`Invalid command ${operation}`)
         }
     }
 

@@ -20,11 +20,13 @@ import { MessageHandler } from "../services/message-handler";
                 return console.warn(message.error);
             }
 
-            if (message.value?.command !== "ACK") {
+            if (message.value.command !== "ACK") {
                 return console.log("Received message that is not an ACK");
             }
 
-            messageHandler.removeMessageFromSortedSet(message.value.message);
+            messageHandler.removeMessageFromSortedSet(message.value.message).then(() => {
+                console.log(`Message ${message.value.message} was acknowledged`);
+            });
         })
         // Bubble up the error to main thread to stop acquirer from claiming leadership
     }).on("error", (err) => { throw err });

@@ -42,7 +42,7 @@ export function initialDecode(buffer: ArrayBuffer): types.Result<InitialDecode> 
     };
 }
 
-export function decode(buffer: ArrayBuffer) {
+export function decode(buffer: ArrayBuffer): types.Result<InitialDecode> {
     const result = initialDecode(buffer);
 
     if (!result.ok) {
@@ -63,7 +63,7 @@ export function decode(buffer: ArrayBuffer) {
         default:
             return {
                 ok: false,
-                error: new Error("Invalid command")
-            };
+                error: new Error("No such command found")
+            }
     }
 }

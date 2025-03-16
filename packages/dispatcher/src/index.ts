@@ -12,7 +12,8 @@ const CONSUMER_URLS = environment.loadEnvironment("CONSUMER_URLS").split(",");
 
 const createWorker = (workerPath: string, workerData: any, mutex: { shouldGiveUpLeadership: boolean }) => {
     return new Worker(path.join(__dirname, `workers/${workerPath}`), { workerData })
-        .on("error", () => {
+        .on("error", (err) => {
+            console.error(`${workerPath} worker failed`, err);
             mutex.shouldGiveUpLeadership = true;
         });
 }
