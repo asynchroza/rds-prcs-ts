@@ -17,7 +17,20 @@ type GetNextAvailableConsumerStrategy = (manager: ConsumerGroupManager) => () =>
 const CONSUMER_URLS_KEY = "consumer:urls";
 
 /**
- * This is not encapsulating the connetions well. Consider moving them inside the class.
+ * TODO: 
+ * I'm going to skip over this for now but even though this looks CoOl,
+ * it's a really inefficient way to get the next available consumer.
+ * Not because the algorithm is bad but because we copy the `liveConnections` array
+ * every time we yield it. We're doing this to avoid exposing the internal reference
+ * but this doesn't help us much either way because the connection references are still 
+ * accessible and mutable. Also, there's not really any way for us to avoid giving access
+ * to the connections outside of the scope of the strategy and the manager, especially in 
+ * high performance scenarius because a copy operation is expensive.
+ *
+ * Hence, TODO: Pull inside the consumer manager, avoid exposing the connections array.
+ *
+ * @qs
+ *  * How expensive is the copy operation really if we have only 10 connections?
  */
 export const getNextAvailableConsumerRoundRobinStrategy = () => {
     let currentIndex = 0;
@@ -25,20 +38,22 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
     return (manager: ConsumerGroupManager) => {
         return () => {
             const liveConnections = manager.liveConnections;
+            const totalConnections = liveConnections.length;
 
-            if (liveConnections.length === 0) {
+            if (totalConnections === 0) {
                 return;
             }
 
-            if (currentIndex >= liveConnections.length) {
-                currentIndex = 0;
-            }
+            let startIndex = currentIndex;
+            let checked = 0;
 
-            // Skip closed connections
-            while (liveConnections[currentIndex]?.closed) {
-                // TODO: Fix edge case when we're past the middle of the array and all the connections are closed
-                currentIndex = (currentIndex + 1) % liveConnections.length;
-                if (currentIndex === 0) break;
+            while (liveConnections[currentIndex]?.closed && checked < totalConnections) {
+                currentIndex = (currentIndex + 1) % totalConnections;
+                checked++;
+
+                if (currentIndex === startIndex) {
+                    return;
+                }
             }
 
             const connection = liveConnections[currentIndex];
@@ -47,12 +62,13 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
                 return;
             }
 
-            currentIndex = (currentIndex + 1) % liveConnections.length;
+            currentIndex = (currentIndex + 1) % totalConnections;
 
             return connection;
         };
     };
 };
+
 
 export class ConsumerGroupManager {
     private connections: Record<string, Consumer> = {};
@@ -74,7 +90,7 @@ export class ConsumerGroupManager {
             this._liveConnections.splice(index, 1);
         }
 
-        // This was blocking the event loop because of backpressure on the publisher redis instance 
+        // This is blocking the event loop if it reuses the suscribed connection
         this.deleteConsumerUrlFromDatabase(consumerUrl);
     }
 
@@ -101,16 +117,26 @@ export class ConsumerGroupManager {
         return this.redisClient.DEL(CONSUMER_URLS_KEY);
     }
 
+    /**
+     * Method for cleaning up current connections (in database) 
+     * and establishing new connections with provided consumers.
+     */
     async setConsumers(consumerUrls: string[]) {
+        await this.resetConsumerUrlsInRedisList();
+
         for (const consumer of consumerUrls) {
             if (!this.connections[consumer]) {
                 this.connections[consumer] = this.establishConnectionWithConsumer(consumer);
             }
         }
-
-        await this.resetConsumerUrlsInRedisList();
     }
 
+    /**
+    * Method for creating a new socket connection to the specified consumer.
+    * Appends the appropriate event listeners to the connection which would handle
+    * trying to re-establish the connection in case of a disconnect and pushing the 
+    * identifier to the Database.
+    */
     private establishConnectionWithConsumer(consumerUrl: string) {
         const [host, port] = consumerUrl.split(":");
 
