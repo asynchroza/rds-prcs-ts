@@ -3,6 +3,8 @@ import net from "net"
 import { createClient } from "redis";
 import { workerData } from "worker_threads";
 import { MessageHandler } from "../services/message-handler";
+import { Server } from "ws";
+import { wsUtils } from "@asynchroza/common/src/utils";
 
 (async () => {
     const { redisUrl, acknowledgerPort } = workerData as { redisUrl: string, acknowledgerPort: number };
@@ -14,9 +16,17 @@ import { MessageHandler } from "../services/message-handler";
 
     let messageCount = 0;
 
-    const srv = net.createServer((socket) => {
-        socket.on("data", (data) => {
-            const message = nonameproto.decode(data.buffer);
+    const ws = new Server({ port: acknowledgerPort });
+
+    ws.on("connection", (socket) => {
+        socket.on("message", (data) => {
+            const buffer = wsUtils.sliceBuffer(data);
+
+            if (!buffer.ok) {
+                return console.warn(buffer.error);
+            }
+
+            const message = nonameproto.decode(buffer.value);
 
             if (!message.ok) {
                 return console.warn(message.error);
@@ -31,10 +41,18 @@ import { MessageHandler } from "../services/message-handler";
                 console.log(`${result} - Message ${message.value.message} was acknowledged`);
             });
         })
-        // Bubble up the error to main thread to stop acquirer from claiming leadership
-    }).on("error", (err) => { throw err });
 
-    srv.listen(acknowledgerPort, () => {
-        console.log(`Acknowledger bound on port ${acknowledgerPort}`)
-    }).on("error", (err) => { throw err });
-})();
+        socket.onerror = (err) => {
+            throw err;
+        }
+
+        socket.onclose = () => {
+            throw new Error("Server closed unexpectedly");
+        }
+    })
+        // We need these to ensure that we bubble up the errors to the main thread
+        .on("error", (err) => {
+            throw err;
+        })
+        .on("close", () => { throw new Error("Server closed unexpectedly") });
+})()

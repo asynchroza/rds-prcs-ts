@@ -68,10 +68,10 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
         socket.on('message', (data) => {
             const arrayBuffer = wsUtils.sliceBuffer(data);
 
-            if (!arrayBuffer) throw new Error("Invalid data type received");
+            if (!arrayBuffer.ok) throw new Error("Invalid data type received");
 
 
-            const result = nonameproto.decode(arrayBuffer);
+            const result = nonameproto.decode(arrayBuffer.value);
 
             if (!result.ok) {
                 console.log("Received message that is not an ACK");
@@ -81,7 +81,7 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
             // Read comment on `MessageHandler.removeMessageFromSortedSet`
             // No need to waste resources on encoding when we can just swap out the
             // command byte as the message is pretty much the same
-            const message = new Uint8Array(arrayBuffer)
+            const message = new Uint8Array(arrayBuffer.value)
             message[1] = COMMANDS_TO_BINARY.get("ACK")!
 
             const deserializedMessage = JSON.parse(result.value.message) as {
