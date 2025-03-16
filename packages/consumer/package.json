@@ -4,9 +4,11 @@
   "main": "src/index.ts",
   "license": "MIT",
   "scripts": {
-    "dev": "nodemon --exec node -r ts-node/register src/index.ts"
+    "dev": "nodemon --exec node -r ts-node/register src/index.ts",
+    "build": "ts-node esbuild.ts"
   },
   "devDependencies": {
+    "esbuild": "^0.25.1",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"

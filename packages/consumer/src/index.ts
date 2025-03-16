@@ -2,7 +2,7 @@ import { environment, nonameproto } from '@asynchroza/common'
 import { COMMANDS_TO_BINARY } from '@asynchroza/common/src/nonameproto'
 import { createClient } from 'redis'
 import { sleep, wsUtils } from '@asynchroza/common/src/utils'
-import { Server, WebSocket } from 'ws'
+import { WebSocket } from 'ws'
 
 const CONSUMER_PORT = environment.loadEnvironment("CONSUMER_PORT")
 const POSSIBLE_ACK_HOSTS = environment.loadEnvironment("ACK_HOSTS").split(',').map(host => {
@@ -62,7 +62,7 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
 
     let messageCount = 0;
 
-    const ws = new Server({ port: parseInt(CONSUMER_PORT) });
+    const ws = new WebSocket.Server({ port: parseInt(CONSUMER_PORT) });
 
     ws.on('connection', (socket) => {
         socket.on('message', (data) => {
