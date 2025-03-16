@@ -2,7 +2,7 @@ import { environment, nonameproto } from '@asynchroza/common'
 import { COMMANDS_TO_BINARY } from '@asynchroza/common/src/nonameproto'
 import { createClient } from 'redis'
 import net from 'net'
-import { sleep } from '@asynchroza/common/src/utils'
+import { sleep, wsUtils } from '@asynchroza/common/src/utils'
 import { Server } from 'ws'
 
 const CONSUMER_PORT = environment.loadEnvironment("CONSUMER_PORT")
@@ -56,12 +56,12 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
 
     ws.on('connection', (socket) => {
         socket.on('message', (data) => {
-            if (!(data instanceof ArrayBuffer)) {
-                console.log("Received message that is not an ArrayBuffer");
-                return;
-            }
+            const arrayBuffer = wsUtils.sliceBuffer(data);
 
-            const result = nonameproto.decode(data);
+            if (!arrayBuffer) throw new Error("Invalid data type received");
+
+
+            const result = nonameproto.decode(arrayBuffer);
 
             if (!result.ok) {
                 console.log("Received message that is not an ACK");
@@ -71,7 +71,7 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
             // Read comment on `MessageHandler.removeMessageFromSortedSet`
             // No need to waste resources on encoding when we can just swap out the
             // command byte as the message is pretty much the same
-            const message = new Uint8Array(data)
+            const message = new Uint8Array(arrayBuffer)
             message[1] = COMMANDS_TO_BINARY.get("ACK")!
 
             const deserializedMessage = JSON.parse(result.value.message) as {
