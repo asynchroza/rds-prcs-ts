@@ -1,0 +1,9 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis_dispatcher
+    restart: always
+    ports:
+      - 7111:6379
+    command: ["redis-server", "--appendonly", "yes"]
+

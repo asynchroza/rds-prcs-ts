@@ -68,7 +68,7 @@ export class ConsumerGroupManager {
         this.getNextAvailableConsumer = getNextAvailableConsumerStrategy(this);
     }
 
-    private async dequeueConnection(consumerUrl: string) {
+    private dequeueConnection(consumerUrl: string) {
         console.log(`Disconnected from ${consumerUrl}`);
         const index = this._liveConnections.indexOf(this.connections[consumerUrl]);
 
@@ -76,9 +76,8 @@ export class ConsumerGroupManager {
             this._liveConnections.splice(index, 1);
         }
 
-        // TODO: I cannot figure out what's happening with the event loop here.
-        // This is blocking and subscription processing stops
-        // return await this.deleteConsumerUrlFromDatabase(consumerUrl);
+        // This was blocking the event loop because of backpressure on the publisher redis instance 
+        this.deleteConsumerUrlFromDatabase(consumerUrl);
     }
 
     private async enqueueConnection(consumerUrl: string) {
@@ -127,12 +126,12 @@ export class ConsumerGroupManager {
 
         connection.once("close", async () => {
             consumer.closed = true;
-            await this.dequeueConnection(consumerUrl);
+            this.dequeueConnection(consumerUrl);
         })
 
         connection.once("connect", () => {
             consumer.closed = false;
-            process.nextTick(() => this.enqueueConnection(consumerUrl));
+            this.enqueueConnection(consumerUrl);
         })
 
         return consumer;
