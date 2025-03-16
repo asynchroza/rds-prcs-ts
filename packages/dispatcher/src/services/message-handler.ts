@@ -17,9 +17,10 @@ export class MessageHandler {
     * own unique identifier for the message in the message distributor is redudant.
     * The goal was to avoid using the `message_id` property in the message because
     * it would have required JSON deserialization and instead use a unique identifier
-    * we generate ourselves. Not necessary anymore.
+    * we generate ourselves. Not required anymore.
     */
     removeMessageFromSortedSet(message: string) {
+        console.log(`Removing message ${message} from sorted set`);
         return this.redisClinet.ZREM(SORTED_SET_NAME, message);
     };
 
