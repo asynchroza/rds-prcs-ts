@@ -96,7 +96,7 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
                 console.log(`Processed ${++messageCount} messages`);
                 console.log(`Message with id ${deserializedMessage.message_id} processed and saved to Redis`);
             })
-        }).on("error", (err) => { throw err });
+        })
     });
 
     ws.on('error', (err) => { throw err });

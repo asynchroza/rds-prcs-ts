@@ -41,14 +41,6 @@ import { wsUtils } from "@asynchroza/common/src/utils";
                 console.log(`${result} - Message ${message.value.message} was acknowledged`);
             });
         })
-
-        socket.onerror = (err) => {
-            throw err;
-        }
-
-        socket.onclose = () => {
-            throw new Error("Server closed unexpectedly");
-        }
     })
         // We need these to ensure that we bubble up the errors to the main thread
         .on("error", (err) => {
