@@ -9,10 +9,12 @@ const TTL_SECONDS = Number(environment.loadEnvironment("LEADERSHIP_TTL_IN_SECOND
 const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL");
 const CONSUMER_URLS = ["localhost:6969", "localhost:7001"];
 
-/**
- * @qs
-* How do I stop the leadership acquirer from renewing the lock on worker error?
-*/
+const createWorker = (workerPath: string, workerData: any, mutex: { shouldGiveUpLeadership: boolean }) => {
+    return new Worker(path.join(__dirname, `workers/${workerPath}`), { workerData })
+        .on("error", () => {
+            mutex.shouldGiveUpLeadership = true;
+        });
+}
 
 (async () => {
     const client = createClient({ url: REDIS_PUBLISHER_URL });
@@ -31,13 +33,18 @@ const CONSUMER_URLS = ["localhost:6969", "localhost:7001"];
             console.log("Lost leadership");
         },
         onLeadershipAcquire() {
-            workers = []; // TODO: Possible leakage here - unterminated workers
+            if (workers && workers?.length > 0) {
+                console.warn("Workers are running, terminating old ones before starting new ones");
+                workers.forEach(worker => worker.terminate());
+                return;
+            }
+
+            workers = [];
             workers.push(
-                new Worker(path.join(__dirname, "workers/message-distributor.ts"),
-                    { workerData: { redisUrl: REDIS_PUBLISHER_URL, consumerUrls: CONSUMER_URLS } })
-                    .on("error", () => {
-                        mutex.shouldGiveUpLeadership = true;
-                    }));
+                createWorker("message-distributor.ts",
+                    { redisUrl: REDIS_PUBLISHER_URL, consumerUrls: CONSUMER_URLS }, mutex),
+                createWorker("acknowledger.ts", { redisUrl: REDIS_PUBLISHER_URL }, mutex)
+            );
         }
     });
 })();
