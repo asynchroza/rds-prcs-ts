@@ -12,6 +12,8 @@ import { MessageHandler } from "../services/message-handler";
 
     const messageHandler = new MessageHandler(redisClient);
 
+    let messageCount = 0;
+
     const srv = net.createServer((socket) => {
         socket.on("data", (data) => {
             const message = nonameproto.decode(data.buffer);
@@ -25,6 +27,7 @@ import { MessageHandler } from "../services/message-handler";
             }
 
             messageHandler.removeMessageFromSortedSet(message.value.message).then((result) => {
+                console.log(`Received ${++messageCount} acknowledgements`);
                 console.log(`${result} - Message ${message.value.message} was acknowledged`);
             });
         })

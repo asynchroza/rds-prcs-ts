@@ -14,7 +14,9 @@
   "dependencies": {
     "@asynchroza/common": "*",
     "@types/node": "^22.13.10",
-    "redis": "^4.7.0"
+    "@types/ws": "^8.18.0",
+    "redis": "^4.7.0",
+    "ws": "^8.18.1"
   },
   "private": true
 }

@@ -1,9 +1,9 @@
+import WebSocket from "ws";
 import { createClient } from "redis";
-import net from 'net'
 
 type Consumer = {
     url: string;
-    connection: net.Socket;
+    connection: WebSocket;
     closed: boolean;
 }
 
@@ -89,10 +89,9 @@ export class ConsumerGroupManager {
         this.deleteConsumerUrlFromDatabase(consumerUrl);
     }
 
-    private enqueueConnection(consumerUrl: string) {
-        console.log(`Connected to ${consumerUrl}`);
-        this._liveConnections.push(this.connections[consumerUrl]);
-        this.addConsumerUrlToDatabase(consumerUrl);
+    private enqueueConnection(consumer: Consumer) {
+        this._liveConnections.push(consumer);
+        this.addConsumerUrlToDatabase(consumer.url);
     }
 
     // TODO: Figure out a bettter way to handle this. Cloning the array is not efficient and we're still exposing the internal reference to the consumers
@@ -136,40 +135,39 @@ export class ConsumerGroupManager {
     * But I spent too much time debugging blocking event loops I got to moveee.
     */
     private establishConnectionWithConsumer(consumerUrl: string) {
-        const [host, port] = consumerUrl.split(":");
-
-        const connection = new net.Socket().connect({ port: Number(port), host })
-            .on("close", () => {
-                consumer.closed = true;
-                if (!consumer.closed) this.dequeueConnection(consumerUrl);
-            })
-            .on("connect", () => {
-                consumer.closed = false;
-                this.enqueueConnection(consumerUrl);
-            })
-            .once("error", (err) =>
-                console.error(`Error establishing initial connection to ${consumerUrl}:`, err.message));
+        const socket = new WebSocket(`ws://${consumerUrl}`);
 
         const consumer: Consumer = {
             url: consumerUrl,
-            connection,
-            closed: true
+            connection: socket,
+            closed: false
+        }
+
+        this.enqueueConnection(consumer);
+
+        socket.onclose = () => {
+            consumer.closed = true;
+            if (!consumer.closed) this.dequeueConnection(consumerUrl);
+        }
+
+        socket.onerror = () => {
+            console.error(`Error with connection to ${consumerUrl}`);
+            consumer.closed = true;
+            if (!consumer.closed) this.dequeueConnection(consumerUrl);
         }
 
         return consumer;
     }
 
     private reconnectToConsumer(consumer: Consumer) {
-        const [host, port] = consumer.url.split(":");
-
-        if (consumer.connection.connecting) return;
+        if (!consumer.closed) return;
 
         console.log(`Attempting to reconnect to ${consumer.url}`);
 
-        consumer.connection.connect({ port: parseInt(port), host })
-            .once("error", (err) => {
-                console.error(`Error reconnecting to ${consumer.url}:`, err.message);
-            });
+        const newConsumer = this.establishConnectionWithConsumer(consumer.url);
+        delete this.connections[consumer.url];
+
+        this.connections[consumer.url] = newConsumer;
     }
 
     reconnectDeadConsumers() {

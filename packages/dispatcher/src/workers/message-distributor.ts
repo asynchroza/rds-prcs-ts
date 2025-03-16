@@ -24,6 +24,7 @@ type DistributorWorkerData = {
     await consumerGroupManager.setConsumers(consumerUrls);
 
     publisherclient.SUBSCRIBE("messages:published", async (message) => {
+        console.log("Received message from publisher - " + message);
         const consumer = consumerGroupManager.getNextAvailableConsumer()
         // Otherwise, we cannot trust that by the time the message is acknowledged it will be present
         // in the sorted set -- write happens after the actual delete operation
@@ -33,16 +34,17 @@ type DistributorWorkerData = {
         await messageHandler.addMessageToSortedSet(message);
 
         if (!consumer) {
+            console.log("No consumers available to process message");
             // SILENCE! -- logs were polluting
             return;
         }
 
-        console.log(`Sending message to ${consumer?.url}`)
-
         const encodedMessage = messageHandler.encodeProcessMessage(message)
         assert(encodedMessage.ok)
 
-        consumer.connection.write(encodedMessage.value)
+        console.log(`Sending message to ${consumer.connection.url}`);
+
+        consumer.connection.send(encodedMessage.value);
     })
 
     setInterval(() => consumerGroupManager.reconnectDeadConsumers(), 2000)
