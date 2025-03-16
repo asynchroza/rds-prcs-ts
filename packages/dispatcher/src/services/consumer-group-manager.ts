@@ -135,7 +135,7 @@ export class ConsumerGroupManager {
     * trying to re-establish the connection in case of a disconnect and pushing the 
     * identifier to the Database.
     */
-    private establishConnectionWithConsumer(consumerUrl: string, connectionRetryInSeconds: number = 1) {
+    private establishConnectionWithConsumer(consumerUrl: string) {
         const [host, port] = consumerUrl.split(":");
 
         const connection = new net.Socket().connect({ port: Number(port), host })
