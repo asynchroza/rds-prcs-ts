@@ -5,7 +5,7 @@ import { workerData } from "worker_threads";
 import { MessageHandler } from "../services/message-handler";
 
 (async () => {
-    const { redisUrl } = workerData as { redisUrl: string, acquirerPort: number };
+    const { redisUrl, acknowledgerPort } = workerData as { redisUrl: string, acknowledgerPort: number };
 
     const redisClient = createClient({ url: redisUrl });
     await redisClient.connect();
@@ -29,7 +29,7 @@ import { MessageHandler } from "../services/message-handler";
         // Bubble up the error to main thread to stop acquirer from claiming leadership
     }).on("error", (err) => { throw err });
 
-    srv.listen(workerData.acquirerPort, () => {
-        console.log(`Acknowledger bound on port ${workerData.acquirerPort}`)
+    srv.listen(acknowledgerPort, () => {
+        console.log(`Acknowledger bound on port ${acknowledgerPort}`)
     });
 })();

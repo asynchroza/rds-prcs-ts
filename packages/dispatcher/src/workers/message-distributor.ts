@@ -32,7 +32,7 @@ type DistributorWorkerData = {
         }
 
         console.log(`Sending message to ${consumer?.url}`)
-        const encodedMessage = messageHandler.encodeMessage(message)
+        const encodedMessage = messageHandler.encodeProcessMessage(message)
 
         assert(encodedMessage.ok)
 

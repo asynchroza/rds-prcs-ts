@@ -7,7 +7,8 @@ import path from "path";
 const DISPATCHER_ID = crypto.randomUUID();
 const TTL_SECONDS = Number(environment.loadEnvironment("LEADERSHIP_TTL_IN_SECONDS"));
 const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL");
-const CONSUMER_URLS = ["localhost:6969", "localhost:7001"];
+const ACKNOWLEDGER_PORT = parseInt(environment.loadEnvironment("ACKNOWLEDGER_PORT"));
+const CONSUMER_URLS = environment.loadEnvironment("CONSUMER_URLS").split(",");
 
 const createWorker = (workerPath: string, workerData: any, mutex: { shouldGiveUpLeadership: boolean }) => {
     return new Worker(path.join(__dirname, `workers/${workerPath}`), { workerData })
@@ -41,9 +42,15 @@ const createWorker = (workerPath: string, workerData: any, mutex: { shouldGiveUp
 
             workers = [];
             workers.push(
-                createWorker("message-distributor.ts",
-                    { redisUrl: REDIS_PUBLISHER_URL, consumerUrls: CONSUMER_URLS }, mutex),
-                createWorker("acknowledger.ts", { redisUrl: REDIS_PUBLISHER_URL }, mutex)
+                createWorker("message-distributor.ts", {
+                    redisUrl: REDIS_PUBLISHER_URL,
+                    consumerUrls: CONSUMER_URLS
+                }, mutex),
+
+                createWorker("acknowledger.ts", {
+                    redisUrl: REDIS_PUBLISHER_URL,
+                    acknowledgerPort: ACKNOWLEDGER_PORT
+                }, mutex)
             );
         }
     });

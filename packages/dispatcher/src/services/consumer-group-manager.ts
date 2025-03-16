@@ -139,22 +139,22 @@ export class ConsumerGroupManager {
         const [host, port] = consumerUrl.split(":");
 
         const connection = new net.Socket().connect({ port: Number(port), host })
+            .on("close", () => {
+                consumer.closed = true;
+                if (!consumer.closed) this.dequeueConnection(consumerUrl);
+            })
+            .on("connect", () => {
+                consumer.closed = false;
+                this.enqueueConnection(consumerUrl);
+            })
+            .once("error", (err) =>
+                console.error(`Error establishing initial connection to ${consumerUrl}:`, err.message));
 
         const consumer: Consumer = {
             url: consumerUrl,
             connection,
             closed: true
         }
-
-        connection.on("close", () => {
-            consumer.closed = true;
-            this.dequeueConnection(consumerUrl);
-        })
-
-        connection.on("connect", () => {
-            consumer.closed = false;
-            this.enqueueConnection(consumerUrl);
-        })
 
         return consumer;
     }
