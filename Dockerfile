@@ -16,6 +16,8 @@ FROM node:23-alpine AS production
 WORKDIR /app
 
 ARG WORKSPACE
-COPY --from=build /app/packages/${WORKSPACE}/dist/bundle.js ./
+ENV NODE_ENV="production"
 
-CMD ["node", "bundle.js"]
+COPY --from=build /app/packages/${WORKSPACE}/dist/. ./
+
+CMD ["node", "index.js"]

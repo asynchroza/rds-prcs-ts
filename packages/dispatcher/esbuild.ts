@@ -1,15 +1,16 @@
 import esbuild from 'esbuild';
 
-async function build() {
+export default async function build() {
     await esbuild.build({
-        entryPoints: ['./src/index.ts'],
+        entryPoints: ['./src/index.ts', './src/workers/acknowledger.ts', './src/workers/message-distributor.ts', './src/workers/message-redistributor.ts'],
         bundle: true,
-        outfile: './dist/bundle.js',
-        target: 'ES2022',
+        outdir: './dist',
         platform: 'node',
         minify: true,
         sourcemap: true,
-        resolveExtensions: ['.ts', '.js'],
+        preserveSymlinks: true,
+        tsconfig: './tsconfig.json',
+        resolveExtensions: ['.ts', '.js']
     });
 }
 

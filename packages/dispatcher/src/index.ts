@@ -9,11 +9,16 @@ const TTL_SECONDS = Number(environment.loadEnvironment("LEADERSHIP_TTL_IN_SECOND
 const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL");
 const ACKNOWLEDGER_PORT = parseInt(environment.loadEnvironment("ACKNOWLEDGER_PORT"));
 const CONSUMER_URLS = environment.loadEnvironment("CONSUMER_URLS").split(",");
+const IS_PROD = environment.loadEnvironment("NODE_ENV") === "production";
 
-const createWorker = (workerPath: string, workerData: any, mutex: { shouldGiveUpLeadership: boolean }) => {
-    return new Worker(path.join(__dirname, `workers/${workerPath}`), { workerData })
+const getWorkerPath = (workerName: string) => {
+    return path.join(__dirname, IS_PROD ? ".." : ".", `workers/${workerName}.${IS_PROD ? "js" : "ts"}`);
+}
+
+const createWorker = (workerFileNameWoExt: string, workerData: any, mutex: { shouldGiveUpLeadership: boolean }) => {
+    return new Worker(path.join(__dirname, getWorkerPath(workerFileNameWoExt)), { workerData })
         .on("error", (err) => {
-            console.error(`${workerPath} worker failed`, err);
+            console.error(`${workerFileNameWoExt} worker failed`, err);
             mutex.shouldGiveUpLeadership = true;
         });
 }
@@ -43,17 +48,17 @@ const createWorker = (workerPath: string, workerData: any, mutex: { shouldGiveUp
 
             workers = [];
             workers.push(
-                createWorker("message-distributor.ts", {
+                createWorker("message-distributor", {
                     redisUrl: REDIS_PUBLISHER_URL,
                     consumerUrls: CONSUMER_URLS
                 }, mutex),
 
-                createWorker("acknowledger.ts", {
+                createWorker("acknowledger", {
                     redisUrl: REDIS_PUBLISHER_URL,
                     acknowledgerPort: ACKNOWLEDGER_PORT
                 }, mutex),
 
-                createWorker("message-redistributor.ts", {
+                createWorker("message-redistributor", {
                     redisUrl: REDIS_PUBLISHER_URL,
                 }, mutex)
             );

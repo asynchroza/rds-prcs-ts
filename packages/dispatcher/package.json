@@ -3,8 +3,10 @@
   "version": "0.0.1",
   "main": "src/index.ts",
   "license": "MIT",
+  "type": "module",
   "scripts": {
-    "dev": "nodemon --exec node -r ts-node/register --env-file=.env.sample src/index.ts"
+    "dev": "nodemon --exec node -r ts-node/register --env-file=.env.sample src/index.ts",
+    "build": "ts-node esbuild.ts"
   },
   "devDependencies": {
     "nodemon": "^3.1.9",

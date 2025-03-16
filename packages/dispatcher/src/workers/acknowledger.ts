@@ -2,7 +2,7 @@ import { nonameproto } from "@asynchroza/common";
 import { createClient } from "redis";
 import { workerData } from "worker_threads";
 import { MessageHandler } from "../services/message-handler";
-import { WebSocket } from "ws";
+import { WebSocketServer } from "ws";
 import { wsUtils } from "@asynchroza/common/src/utils";
 
 (async () => {
@@ -15,7 +15,7 @@ import { wsUtils } from "@asynchroza/common/src/utils";
 
     let messageCount = 0;
 
-    const ws = new WebSocket.Server({ port: acknowledgerPort });
+    const ws = new WebSocketServer({ port: acknowledgerPort });
 
     ws.on("connection", (socket) => {
         socket.on("message", (data) => {

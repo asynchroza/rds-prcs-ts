@@ -1,9 +1,112 @@
 services:
-  redis:
+  redis_host:
     image: redis:latest
-    container_name: redis_dispatcher
+    container_name: redis_host
     restart: always
     ports:
-      - 7111:6379
+      - 7234:6379
     command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - rds-tsk
+
+  dispatcher_service_1:
+    container_name: dispatcher_service_1
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - WORKSPACE=dispatcher
+    restart: always
+    environment:
+      - REDIS_PUBLISHER_URL=redis://redis_host:6379
+      - LEADERSHIP_TTL_IN_SECONDS=${LEADERSHIP_TTL_IN_SECONDS}
+      - CONSUMER_URLS=consumer_service_1:6969,consumer_service_2:7001,consumer_service_3:7002
+      - ACKNOWLEDGER_PORT=5001
+    ports:
+      - 5001:5001
+    depends_on:
+      - redis_host
+    networks:
+      - rds-tsk
+
+  dispatcher_service_2:
+    container_name: dispatcher_service_2
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - WORKSPACE=dispatcher
+    restart: always
+    environment:
+      - REDIS_PUBLISHER_URL=redis://redis_host:6379
+      - LEADERSHIP_TTL_IN_SECONDS=${LEADERSHIP_TTL_IN_SECONDS}
+      - CONSUMER_URLS=consumer_service_1:6969,consumer_service_2:7001,consumer_service_3:7002
+      - ACKNOWLEDGER_PORT=5002
+    ports:
+      - 5002:5002
+    depends_on:
+      - redis_host
+    networks:
+      - rds-tsk
+
+  consumer_service_1:
+    container_name: consumer_service_1
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - WORKSPACE=consumer
+    restart: always
+    environment:
+      - CONSUMER_PORT=6969
+      - REDIS_PUBLISHER_URL=redis://redis_host:6379
+      - ACK_HOSTS=dispatcher_service_1:5001,dispatcher_service_2:5002
+    ports:
+      - 6969:6969
+    depends_on:
+      - redis_host
+    networks:
+      - rds-tsk
+
+  consumer_service_2:
+    container_name: consumer_service_2
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - WORKSPACE=consumer
+    restart: always
+    environment:
+      - CONSUMER_PORT=7001
+      - REDIS_PUBLISHER_URL=redis://redis_host:6379
+      - ACK_HOSTS=dispatcher_service_1:5001,dispatcher_service_2:5002
+    ports:
+      - 7001:7001
+    depends_on:
+      - redis_host
+    networks:
+      - rds-tsk
+
+  consumer_service_3:
+    container_name: consumer_service_3
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - WORKSPACE=consumer
+    restart: always
+    environment:
+      - CONSUMER_PORT=7002
+      - REDIS_PUBLISHER_URL=redis://redis_host:6379
+      - ACK_HOSTS=dispatcher_service_1:5001,dispatcher_service_2:5002
+    ports:
+      - 7002:7002
+    depends_on:
+      - redis_host
+    networks:
+      - rds-tsk
+
+networks:
+  rds-tsk:
+    driver: bridge
 
