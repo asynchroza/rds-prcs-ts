@@ -9,9 +9,11 @@ type DistributorWorkerData = {
 }
 
 (async () => {
+    const { redisUrl, consumerUrls } = (workerData as DistributorWorkerData)
+
     // TODO: Check if connection pooling is will help here
-    const publisherclient = createClient({ url: (workerData as DistributorWorkerData).redisUrl })
-    const consumerClient = createClient({ url: (workerData as DistributorWorkerData).redisUrl })
+    const publisherclient = createClient({ url: redisUrl })
+    const consumerClient = createClient({ url: redisUrl })
 
     await Promise.all([publisherclient.connect(), consumerClient.connect()]);
 
@@ -19,7 +21,7 @@ type DistributorWorkerData = {
     const consumerGroupManager = new ConsumerGroupManager(consumerClient, getNextAvailableConsumerRoundRobinStrategy());
     const messageHandler = new MessageHandler(consumerClient);
 
-    await consumerGroupManager.setConsumers(consumers);
+    await consumerGroupManager.setConsumers(consumerUrls);
 
     publisherclient.SUBSCRIBE("messages:published", (message) => {
         const consumer = consumerGroupManager.getNextAvailableConsumer()
