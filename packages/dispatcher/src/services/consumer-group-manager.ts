@@ -7,8 +7,6 @@ type Consumer = {
     closed: boolean;
 }
 
-const stackTraces = new Map();
-
 type GetNextAvailableConsumerStrategy = (manager: ConsumerGroupManager) => () => Consumer | undefined;
 
 const CONSUMER_URLS_KEY = "consumer:urls";
@@ -34,7 +32,6 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
 
     return (manager: ConsumerGroupManager) => {
         return () => {
-            console.log("Getting next available consumer");
             const liveConnections = manager.liveConnections;
             const totalConnections = liveConnections.length;
 
