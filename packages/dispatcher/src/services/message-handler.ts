@@ -1,3 +1,4 @@
+import { nonameproto } from "@asynchroza/common";
 import { createClient } from "redis";
 
 const SORTED_SET_NAME = "messages:pending";
@@ -14,8 +15,7 @@ export class MessageHandler {
         return this.redisClinet.DEL(SORTED_SET_NAME)
     }
 
-    // TODO: Encode message to protocol
     encodeMessage(message: string) {
-        return message;
+        return nonameproto.encode("PROCESS", message);
     }
 }

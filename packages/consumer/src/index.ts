@@ -1,11 +1,21 @@
-import { environment } from '@asynchroza/common'
+import { environment, nonameproto } from '@asynchroza/common'
 import net from 'net'
 
 const CONSUMER_PORT = environment.loadEnvironment("CONSUMER_PORT")
 
 const srv = net.createServer((socket) => {
     socket.on('data', (data) => {
-        console.log(data.toString())
+        if (!Buffer.isBuffer(data)) {
+            console.error("Data is not a buffer")
+            return
+        }
+        const result = nonameproto.decode(data)
+
+        if (result.ok) {
+            console.log(result.value)
+        } else {
+            console.error(result.error)
+        }
     })
 })
 

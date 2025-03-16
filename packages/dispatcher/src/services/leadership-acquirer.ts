@@ -1,5 +1,5 @@
 import { createClient } from "redis";
-import { Result } from "../types";
+import { types } from "@asynchroza/common";
 
 const LEADER_KEY = "leadership_lock";
 
@@ -27,7 +27,7 @@ export class LeadershipAcquirer {
     private lockRenewalInterval: NodeJS.Timeout | null = null;
     constructor(private client: ReturnType<typeof createClient>, private leaderIdentifier: string) { }
 
-    async acquireLeadership(ttl: number): Promise<Result<boolean>> {
+    async acquireLeadership(ttl: number): Promise<types.Result<boolean>> {
         try {
             const result = await this.client.SET(LEADER_KEY, this.leaderIdentifier, {
                 NX: true, // Set if not exists @link https://redis.io/docs/latest/commands/setnx/
@@ -41,7 +41,7 @@ export class LeadershipAcquirer {
         }
     }
 
-    private async getLearshipLock(): Promise<Result<string | null>> {
+    private async getLearshipLock(): Promise<types.Result<string | null>> {
         try {
             const result = await this.client.GET(LEADER_KEY);
 
@@ -51,7 +51,7 @@ export class LeadershipAcquirer {
         }
     }
 
-    async renewLeadership(ttl: number): Promise<Result<boolean>> {
+    async renewLeadership(ttl: number): Promise<types.Result<boolean>> {
         try {
             const isLeaderResult = await this.checkIsLeader();
 
@@ -74,7 +74,7 @@ export class LeadershipAcquirer {
         }
     }
 
-    async checkIsLeader(): Promise<Result<boolean>> {
+    async checkIsLeader(): Promise<types.Result<boolean>> {
         const result = await this.getLearshipLock();
 
         if (!result.ok) {
@@ -84,7 +84,7 @@ export class LeadershipAcquirer {
         return { ok: true, value: result.value === this.leaderIdentifier };
     }
 
-    async checkIsLockReleased(): Promise<Result<boolean>> {
+    async checkIsLockReleased(): Promise<types.Result<boolean>> {
         const result = await this.getLearshipLock();
 
         if (!result.ok) {

@@ -27,7 +27,9 @@ type DistributorWorkerData = {
         messageHandler.addMessageToSortedSet(message);
 
         console.log(`Sending message to ${consumer?.url}: ${message}\n`)
-        consumer?.connection.write(messageHandler.encodeMessage(`${consumer.url}: ${message}\n`))
+        const encodedMessage = messageHandler.encodeMessage(message)
+        console.log(encodedMessage)
+        consumer?.connection.write(encodedMessage)
     })
 
     setInterval(() => consumerGroupManager.reconnectDeadConsumers(), 2000)
