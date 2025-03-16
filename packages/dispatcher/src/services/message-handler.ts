@@ -11,11 +11,27 @@ export class MessageHandler {
         return this.redisClinet.ZADD(SORTED_SET_NAME, [{ score: Date.now(), value: message }]);
     }
 
+    /**
+    * I hadn't done enough investigation around deleting the message from the sorted set
+    * and it seems that you remove entries by value. Hence, the whole plan around generating our
+    * own unique identifier for the message in the message distributor is redudant.
+    * The goal was to avoid using the `message_id` property in the message because
+    * it would have required JSON deserialization and instead use a unique identifier
+    * we generate ourselves. Not necessary anymore.
+    */
+    removeMessageFromSortedSet(message: string) {
+        return this.redisClinet.ZREM(SORTED_SET_NAME, message);
+    };
+
     cleanUpSortedSet() {
         return this.redisClinet.DEL(SORTED_SET_NAME)
     }
 
-    encodeMessage(message: string) {
+    encodeProcessMessage(message: string) {
         return nonameproto.encode("PROCESS", message);
+    }
+
+    encodeAckMessage(message: string) {
+        return nonameproto.encode("ACK", message);
     }
 }

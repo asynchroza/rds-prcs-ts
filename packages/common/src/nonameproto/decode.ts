@@ -53,12 +53,17 @@ export function decode(buffer: ArrayBuffer) {
         case "PROCESS":
             return {
                 ok: true,
-                value: result.value.message
+                value: result.value
             };
         case "ACK":
             return {
+                ok: true,
+                value: result.value
+            };
+        default:
+            return {
                 ok: false,
-                error: new Error("Not yet implemented")
+                error: new Error("Invalid command")
             };
     }
 }
