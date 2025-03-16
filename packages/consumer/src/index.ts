@@ -1,5 +1,6 @@
 import { environment, nonameproto } from '@asynchroza/common'
 import { COMMANDS_TO_BINARY } from '@asynchroza/common/src/nonameproto'
+import { createClient } from 'redis'
 import net from 'net'
 
 const CONSUMER_PORT = environment.loadEnvironment("CONSUMER_PORT")
@@ -8,36 +9,42 @@ const POSSIBLE_ACK_HOSTS = environment.loadEnvironment("ACK_HOSTS").split(',').m
 
     return { hostName, port: parseInt(port) }
 })
+const REDIS_PUBLISHER_URL = environment.loadEnvironment("REDIS_PUBLISHER_URL")
 
 let ackSocket: net.Socket;
 
-function tryConnect(hosts: { hostName: string, port: number }[], index = 0) {
+function connectToAcknowledger(hosts: { hostName: string; port: number }[], index = 0): Promise<net.Socket> {
     if (index >= hosts.length) {
-        throw new Error("Could not connect to any of the provided hosts");
+        return Promise.reject(new Error("Could not connect to any of the provided hosts"));
     }
 
-    const socket = new net.Socket();
+    return new Promise((resolve, reject) => {
+        const socket = new net.Socket();
+        const host = hosts[index];
 
-    const host = hosts[index];
-    socket.connect(host.port, host.hostName, () => {
-        console.log(`Connected to acknowledger@${host.hostName}:${host.port}`);
-        ackSocket = socket;
-    }).on("close", () => { throw new Error("Connection to acknowledger closed") })
+        socket.connect(host.port, host.hostName, () => {
+            console.log(`Connected to acknowledger@${host.hostName}:${host.port}`);
+            ackSocket = socket;
+            resolve(socket);
+        });
 
+        socket.on("error", () => {
+            console.log(`${host.hostName}:${host.port} failed, trying next acknowledger host...`);
+            socket.destroy();
+            connectToAcknowledger(hosts, index + 1).then(resolve).catch(reject);
+        });
 
-    socket.on("error", () => {
-        console.log(`${host.hostName}:${host.port} failed, trying next acknowledger host...`);
-        socket.destroy();
-        tryConnect(hosts, index + 1);
+        socket.on("close", () => {
+            reject(new Error("Connection to acknowledger closed"));
+        });
     });
 }
 
-tryConnect(POSSIBLE_ACK_HOSTS);
 
-const srv = net.createServer((socket) => {
-    if (!ackSocket) {
-        throw new Error("Couldn't establish connection with acknowledger");
-    }
+const srv = net.createServer(async (socket) => {
+    // Ensure connection to acknowledger is established
+    const redisClient = createClient({ url: REDIS_PUBLISHER_URL });
+    await Promise.all([connectToAcknowledger(POSSIBLE_ACK_HOSTS), redisClient.connect()]);
 
     socket.on('data', (data) => {
         const result = nonameproto.decode(data.buffer);
@@ -50,10 +57,20 @@ const srv = net.createServer((socket) => {
         // No need to waste resources on encoding when we can just swap out the
         // command byte as the message is pretty much the same
         const message = new Uint8Array(data.buffer)
-        nonameproto.encode("ACK", result.value.message)
         message[1] = COMMANDS_TO_BINARY.get("ACK")!
 
         ackSocket.write(message)
+
+        const deserializedMessage = JSON.parse(result.value.message) as {
+            message_id: string, random_property?: string, consumer_id: string
+        };
+
+        deserializedMessage.random_property = crypto.randomUUID();
+        deserializedMessage.consumer_id = `localhost:${CONSUMER_PORT}`
+
+        redisClient.XADD("messages:processed", "*", deserializedMessage).then(() => {
+            console.log(`Message with id ${deserializedMessage.message_id} processed and saved to Redis`);
+        })
     })
 })
 

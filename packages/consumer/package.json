@@ -12,8 +12,9 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "@asynchroza/common": "*",
     "@types/node": "^22.13.10",
-    "@asynchroza/common": "*"
+    "redis": "^4.7.0"
   },
   "private": true
 }
