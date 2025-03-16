@@ -37,7 +37,8 @@ def publisher():
             p.execute()
 
             total_messages += batch_size
-            time.sleep(random.uniform(0.1, 0.5))
+            # time.sleep(random.uniform(0.1, 0.5))
+            time.sleep(10)
 
     except Exception as e:
         print(f"Error: {e}")

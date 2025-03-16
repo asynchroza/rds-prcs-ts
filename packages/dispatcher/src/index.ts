@@ -51,6 +51,10 @@ const createWorker = (workerPath: string, workerData: any, mutex: { shouldGiveUp
                 createWorker("acknowledger.ts", {
                     redisUrl: REDIS_PUBLISHER_URL,
                     acknowledgerPort: ACKNOWLEDGER_PORT
+                }, mutex),
+
+                createWorker("message-redistributor.ts", {
+                    redisUrl: REDIS_PUBLISHER_URL,
                 }, mutex)
             );
         }

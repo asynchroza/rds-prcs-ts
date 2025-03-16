@@ -20,7 +20,7 @@ function connectToAcknowledger(hosts: { hostName: string; port: number }[], inde
     }
 
     const host = hosts[index];
-    const url = `ws://${host.hostName}:${host.port}`; // Assuming WebSocket runs on ws://
+    const url = `ws://${host.hostName}:${host.port}`;
 
     console.log(`Connecting to acknowledger: ${url}`);
 
@@ -48,8 +48,8 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
     // Ensure connection to acknowledger is established
     const redisClient = createClient({ url: REDIS_PUBLISHER_URL });
 
-    // Sleep for 300ms to give the acknowledger some time to connect
-    await Promise.all([sleep(300), redisClient.connect()]);
+    // Sleep to give the acknowledger some time to connect
+    await Promise.all([sleep(100), redisClient.connect()]);
 
     if (!ackSocket) {
         throw new Error("Could not connect to any of the provided acknowledger hosts");

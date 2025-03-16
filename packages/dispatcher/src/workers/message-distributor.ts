@@ -3,6 +3,7 @@ import { workerData } from "worker_threads";
 import { ConsumerGroupManager, getNextAvailableConsumerRoundRobinStrategy } from "../services/consumer-group-manager";
 import { MessageHandler } from "../services/message-handler";
 import assert from "assert";
+import { PUBLISH_CHANNEL } from "../constants";
 
 type DistributorWorkerData = {
     redisUrl: string;
@@ -23,7 +24,7 @@ type DistributorWorkerData = {
 
     await consumerGroupManager.setConsumers(consumerUrls);
 
-    publisherclient.SUBSCRIBE("messages:published", async (message) => {
+    publisherclient.SUBSCRIBE(PUBLISH_CHANNEL, async (message) => {
         console.log("Received message from publisher - " + message);
         const consumer = consumerGroupManager.getNextAvailableConsumer()
         // Otherwise, we cannot trust that by the time the message is acknowledged it will be present
