@@ -11,7 +11,7 @@ type DistributorWorkerData = {
     const publisherclient = createClient({ url: (workerData as DistributorWorkerData).redisUrl })
     await publisherclient.connect();
 
-    const consumerClient = createClient({ url: "redis://localhost:7111" });
+    const consumerClient = createClient({ url: (workerData as DistributorWorkerData).redisUrl })
     await consumerClient.connect();
 
     const consumers = (workerData as DistributorWorkerData).consumerUrls;

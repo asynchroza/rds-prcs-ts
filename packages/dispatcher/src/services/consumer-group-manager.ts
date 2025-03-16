@@ -1,7 +1,5 @@
 import { createClient } from "redis";
 import net from 'net'
-import { inspect } from 'util'
-import { nextTick } from "process";
 
 /**
  * TODO:
