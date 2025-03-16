@@ -20,9 +20,11 @@ type DistributorWorkerData = {
 
     await consumerGroupManager.setConsumers(consumers);
 
-    await publisherclient.SUBSCRIBE("messages:published", (message) => {
+    publisherclient.SUBSCRIBE("messages:published", (message) => {
         const consumer = consumerGroupManager.getNextAvailableConsumer()
         console.log(`Sending message to ${consumer?.url}: ${message}\n`)
         consumer?.connection.write(`${consumer.url}: ${message}\n`)
     })
+
+    setInterval(() => consumerGroupManager.regularlyReconnectDeadClients(), 2000)
 })()

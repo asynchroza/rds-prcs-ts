@@ -12,6 +12,33 @@ type Consumer = {
     closed: boolean;
 }
 
+import async_hooks from 'async_hooks';
+
+const stackTraces = new Map();
+
+const hook = async_hooks.createHook({
+    init(asyncId, type, triggerAsyncId, resource) {
+        // Capture the stack trace when an async operation is initialized
+        const stack = (new Error()).stack;
+        stackTraces.set(asyncId, stack);
+    },
+    destroy(asyncId) {
+        // Print the stack trace when an async operation is destroyed
+        const stack = stackTraces.get(asyncId);
+        if (stack) {
+            console.log(`Async operation ${asyncId} destroyed. Stack trace:\n${stack}`);
+            stackTraces.delete(asyncId);
+        }
+    },
+    promiseResolve(asyncId) {
+        // Optionally track promise resolution
+        console.log(`Promise ${asyncId} resolved.`);
+    }
+});
+
+// Enable the async hook
+hook.enable();
+
 type GetNextAvailableConsumerStrategy = (manager: ConsumerGroupManager) => () => Consumer | undefined;
 
 const CONSUMER_URLS_KEY = "consumer:urls";
@@ -37,6 +64,7 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
 
     return (manager: ConsumerGroupManager) => {
         return () => {
+            console.log("Getting next available consumer");
             const liveConnections = manager.liveConnections;
             const totalConnections = liveConnections.length;
 
@@ -94,7 +122,7 @@ export class ConsumerGroupManager {
         this.deleteConsumerUrlFromDatabase(consumerUrl);
     }
 
-    private async enqueueConnection(consumerUrl: string) {
+    private enqueueConnection(consumerUrl: string) {
         console.log(`Connected to ${consumerUrl}`);
         this._liveConnections.push(this.connections[consumerUrl]);
         this.addConsumerUrlToDatabase(consumerUrl);
@@ -137,7 +165,7 @@ export class ConsumerGroupManager {
     * trying to re-establish the connection in case of a disconnect and pushing the 
     * identifier to the Database.
     */
-    private establishConnectionWithConsumer(consumerUrl: string) {
+    private establishConnectionWithConsumer(consumerUrl: string, connectionRetryInSeconds: number = 1) {
         const [host, port] = consumerUrl.split(":");
 
         const connection = new net.Socket().connect({ port: Number(port), host })
@@ -145,19 +173,42 @@ export class ConsumerGroupManager {
         const consumer: Consumer = {
             url: consumerUrl,
             connection,
-            closed: false
+            closed: true
         }
 
-        connection.once("close", async () => {
+        connection.on("close", () => {
             consumer.closed = true;
             this.dequeueConnection(consumerUrl);
         })
 
-        connection.once("connect", () => {
+        connection.on("connect", () => {
             consumer.closed = false;
             this.enqueueConnection(consumerUrl);
         })
 
         return consumer;
+    }
+
+    private reconnectToConsumer(consumer: Consumer) {
+        const [host, port] = consumer.url.split(":");
+
+        if (consumer.connection.connecting) return;
+
+        consumer.connection.connect({ port: parseInt(port), host })
+            .once("error", (err) => {
+                console.error(`Error reconnecting to ${consumer.url}:`, err.message);
+            });
+
+        console.log(`Attempting to reconnect to ${consumer.url}`);
+    }
+
+    regularlyReconnectDeadClients() {
+        console.log("Reconnecting dead clients");
+        for (const connection of Object.values(this.connections)) {
+            if (connection.closed) {
+                console.log(`Reconnecting to ${connection.url}`);
+                this.reconnectToConsumer(connection);
+            }
+        }
     }
 }
