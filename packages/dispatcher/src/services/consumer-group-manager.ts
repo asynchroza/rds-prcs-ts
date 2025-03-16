@@ -29,6 +29,7 @@ const CONSUMER_URLS_KEY = "consumer:urls";
  */
 export const getNextAvailableConsumerRoundRobinStrategy = () => {
     let currentIndex = 0;
+    const isConsumerReadyForConsuming = (consumer?: Consumer) => !consumer?.closed && consumer?.connection.readyState === WebSocket.OPEN;
 
     return (manager: ConsumerGroupManager) => {
         return () => {
@@ -42,7 +43,7 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
             let startIndex = currentIndex;
             let checked = 0;
 
-            while (liveConnections[currentIndex]?.closed && checked < totalConnections) {
+            while (!isConsumerReadyForConsuming(liveConnections[currentIndex]) && checked < totalConnections) {
                 currentIndex = (currentIndex + 1) % totalConnections;
                 checked++;
 

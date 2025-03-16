@@ -1,5 +1,4 @@
 import { nonameproto } from "@asynchroza/common";
-import net from "net"
 import { createClient } from "redis";
 import { workerData } from "worker_threads";
 import { MessageHandler } from "../services/message-handler";

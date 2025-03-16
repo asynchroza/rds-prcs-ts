@@ -12,8 +12,8 @@ load_dotenv('.env.publisher')
 # Redis connection details (modify host and port if needed)
 redis_host = environ["REDIS_HOST"]
 redis_port = environ["REDIS_PORT"]
-target_duration = timedelta(minutes=1)
-batch_size = 2000 
+target_duration = timedelta(minutes=2)
+batch_size = 4000
 
 def publisher():
     try:
@@ -37,8 +37,7 @@ def publisher():
             p.execute()
 
             total_messages += batch_size
-            # time.sleep(random.uniform(0.1, 0.5))
-            time.sleep(10)
+            time.sleep(random.uniform(0.1, 0.5))
 
     except Exception as e:
         print(f"Error: {e}")
