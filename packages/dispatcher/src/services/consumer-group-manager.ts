@@ -1,43 +1,13 @@
 import { createClient } from "redis";
 import net from 'net'
 
-/**
- * TODO:
- * - Retry establishing dead connections and moving them to live connetions -- filter over the map, do not introduce additional complexity with a separate queue
- */
-
 type Consumer = {
     url: string;
     connection: net.Socket;
     closed: boolean;
 }
 
-import async_hooks from 'async_hooks';
-
 const stackTraces = new Map();
-
-const hook = async_hooks.createHook({
-    init(asyncId, type, triggerAsyncId, resource) {
-        // Capture the stack trace when an async operation is initialized
-        const stack = (new Error()).stack;
-        stackTraces.set(asyncId, stack);
-    },
-    destroy(asyncId) {
-        // Print the stack trace when an async operation is destroyed
-        const stack = stackTraces.get(asyncId);
-        if (stack) {
-            console.log(`Async operation ${asyncId} destroyed. Stack trace:\n${stack}`);
-            stackTraces.delete(asyncId);
-        }
-    },
-    promiseResolve(asyncId) {
-        // Optionally track promise resolution
-        console.log(`Promise ${asyncId} resolved.`);
-    }
-});
-
-// Enable the async hook
-hook.enable();
 
 type GetNextAvailableConsumerStrategy = (manager: ConsumerGroupManager) => () => Consumer | undefined;
 
@@ -194,19 +164,17 @@ export class ConsumerGroupManager {
 
         if (consumer.connection.connecting) return;
 
+        console.log(`Attempting to reconnect to ${consumer.url}`);
+
         consumer.connection.connect({ port: parseInt(port), host })
             .once("error", (err) => {
                 console.error(`Error reconnecting to ${consumer.url}:`, err.message);
             });
-
-        console.log(`Attempting to reconnect to ${consumer.url}`);
     }
 
     regularlyReconnectDeadClients() {
-        console.log("Reconnecting dead clients");
         for (const connection of Object.values(this.connections)) {
             if (connection.closed) {
-                console.log(`Reconnecting to ${connection.url}`);
                 this.reconnectToConsumer(connection);
             }
         }
