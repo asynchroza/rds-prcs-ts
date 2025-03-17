@@ -4,7 +4,9 @@ import { createClient } from 'redis'
 import { sleep, wsUtils } from '@asynchroza/common/src/utils'
 import { WebSocket, WebSocketServer } from 'ws'
 
-const CONSUMER_PORT = environment.loadEnvironment("CONSUMER_PORT")
+const CONSUMER_URL = environment.loadEnvironment("CONSUMER_URL")
+const [_, PORT] = CONSUMER_URL.split(":")
+
 const POSSIBLE_ACK_HOSTS = environment.loadEnvironment("ACK_HOSTS").split(',').map(host => {
     const [hostName, port] = host.split(":")
 
@@ -45,12 +47,14 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
     const redisClient = createClient({ url: REDIS_PUBLISHER_URL });
 
     // Sleep to give the acknowledger some time to connect
-    await Promise.all([sleep(100), redisClient.connect()]);
+    await Promise.all([sleep(50), redisClient.connect()]);
 
     if (!ackSocket) {
         throw new Error("Could not connect to any of the provided acknowledger hosts");
     }
 
+    // Overwrite the error handlers to avoid calling the `connectToAcknowledger` function
+    // This could be handled more gracefully
     ackSocket.onerror = () => {
         throw new Error("Error with connection to acknowledger");
     }
@@ -62,7 +66,7 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
 
     let messageCount = 0;
 
-    const ws = new WebSocketServer({ port: parseInt(CONSUMER_PORT) });
+    const ws = new WebSocketServer({ port: parseInt(PORT) });
 
     ws.on('connection', (socket) => {
         socket.on('message', (data) => {
@@ -89,7 +93,7 @@ connectToAcknowledger(POSSIBLE_ACK_HOSTS);
             };
 
             deserializedMessage.random_property = crypto.randomUUID();
-            deserializedMessage.consumer_id = `localhost:${CONSUMER_PORT}`
+            deserializedMessage.consumer_id = CONSUMER_URL;
 
             redisClient.XADD("messages:processed", "*", deserializedMessage).then(() => {
                 ackSocket!.send(message)

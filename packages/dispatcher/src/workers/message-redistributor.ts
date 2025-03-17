@@ -1,13 +1,23 @@
 import { createClient } from "redis";
 import { workerData } from "worker_threads"
 import { MessageHandler } from "../services/message-handler";
+import prometheus from "prom-client";
+import { EventsService } from "../services/events-service";
+import { exitNotSwiftly } from "./utils/exitNotSwiftly";
+
+type WorkerDataInput = {
+    redisUrl: string;
+    pushgatewayUrl: string;
+}
 
 (async () => {
-    const { redisUrl } = workerData as { redisUrl: string };
+    const { redisUrl, pushgatewayUrl } = workerData as WorkerDataInput;
     const redisClient = createClient({ url: redisUrl });
     await redisClient.connect();
 
     const messageHandler = new MessageHandler(redisClient);
+    const promClient = new prometheus.Pushgateway(pushgatewayUrl);
+    const eventsService = new EventsService("redistributor", promClient);
 
     setInterval(async () => {
         console.log("Checking for unacknowledged messages");
@@ -19,9 +29,11 @@ import { MessageHandler } from "../services/message-handler";
             console.log(`Republishing ${messages.length} messages`);
         }
 
-        await messageHandler.redistributeMessages(messages);
+        // We're missing some guarantees here
+        await messageHandler.redistributeMessages(messages).catch(exitNotSwiftly)
+        eventsService.incrementRedistributedMessagesMetric(messages.length);
 
-        // Allocate time to avoid dirty reads
+        // Allocate more time to avoid dirty reads
         // Change this as needed
     }, 3000)
 })()

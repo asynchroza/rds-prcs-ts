@@ -4,12 +4,21 @@ import { workerData } from "worker_threads";
 import { MessageHandler } from "../services/message-handler";
 import { WebSocketServer } from "ws";
 import { wsUtils } from "@asynchroza/common/src/utils";
+import { EventsService } from "../services/events-service";
+import prometheus from 'prom-client';
+
+type WorkerDataInput = {
+    redisUrl: string, acknowledgerPort: number, pushgatewayUrl: string
+}
 
 (async () => {
-    const { redisUrl, acknowledgerPort } = workerData as { redisUrl: string, acknowledgerPort: number };
+    const { redisUrl, acknowledgerPort, pushgatewayUrl } = workerData as WorkerDataInput;
 
     const redisClient = createClient({ url: redisUrl });
     await redisClient.connect();
+
+    const promClient = new prometheus.Pushgateway(pushgatewayUrl);
+    const eventsService = new EventsService("acknowledger", promClient);
 
     const messageHandler = new MessageHandler(redisClient);
 
@@ -38,6 +47,7 @@ import { wsUtils } from "@asynchroza/common/src/utils";
             messageHandler.removeMessageFromSortedSet(message.value.message).then((result) => {
                 console.log(`Received ${++messageCount} acknowledgements`);
                 console.log(`${result} - Message ${message.value.message} was acknowledged`);
+                eventsService.incrementAcknowledgedMessagesMetric();
             });
         })
     })
@@ -46,4 +56,6 @@ import { wsUtils } from "@asynchroza/common/src/utils";
             throw err;
         })
         .on("close", () => { throw new Error("Server closed unexpectedly") });
+
+    eventsService.pushMetrics().catch(console.error);
 })()

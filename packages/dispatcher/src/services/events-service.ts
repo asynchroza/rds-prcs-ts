@@ -9,6 +9,14 @@ export class EventsService {
         name: 'received_messages_from_publisher_total',
         help: 'Number of messages received from the publisher',
     })
+    acknowledgedMessagesCounter = new prometheus.Counter({
+        name: 'acknowledged_messages_total',
+        help: 'Number of messages acknowledged by the consumer',
+    })
+    redistributedMessagesCounter = new prometheus.Counter({
+        name: 'redistributed_messages_total',
+        help: 'Number of previously unacknowledged messages redistributed by the dispatcher',
+    })
 
     constructor(private name: string, private client: prometheus.Pushgateway<any>) { }
 
@@ -18,6 +26,14 @@ export class EventsService {
 
     async incrementReceivedMessagesFromPublisherMetric() {
         this.receivedMessagesFromPublisherCounter.inc();
+    }
+
+    async incrementAcknowledgedMessagesMetric() {
+        this.acknowledgedMessagesCounter.inc();
+    }
+
+    async incrementRedistributedMessagesMetric(count: number = 1) {
+        this.redistributedMessagesCounter.inc(count);
     }
 
     async pushMetrics() {

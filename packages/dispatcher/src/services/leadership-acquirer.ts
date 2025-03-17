@@ -7,7 +7,7 @@ type IntervalCallbacks = {
     /**
     * Callback to be called when this successfully renews its leadership.
     */
-    onLeadershipRenewal?: () => void;
+    onLeadershipRenewal?: () => Promise<void>;
 
     /**
     * Callback to be called when this dispatcher instance acquires a new leadership.
@@ -15,12 +15,12 @@ type IntervalCallbacks = {
     * @note Difference between this and `onLeadershipRenewal` is that this is only 
     * called if the previous leadership instance is different from the current one (i.e. this process)
     */
-    onLeadershipAcquire?: () => void;
+    onLeadershipAcquire?: () => Promise<void>;
 
     /**
     * Callback to be called when this dispatcher instance loses leadership
     */
-    onLeadershipLoss?: () => void;
+    onLeadershipLoss?: () => Promise<void>;
 }
 
 export class LeadershipAcquirer {
@@ -112,7 +112,7 @@ export class LeadershipAcquirer {
 
                 if (acquireResult.ok && acquireResult.value) {
                     console.log("Successfully acquired leadership lock!");
-                    callbacks?.onLeadershipAcquire?.();
+                    await callbacks?.onLeadershipAcquire?.();
 
                     await this.startRenewingLeadership(mutex, ttl, checkIntervalInSeconds, callbacks);
                 } else {
@@ -131,9 +131,11 @@ export class LeadershipAcquirer {
             // Do not even try to renew if we are requested to give up leadership
             if (mutex.shouldGiveUpLeadership) {
                 console.log("Mutex requested to give up leadership, stopping renewal...");
+
                 clearInterval(renewalInterval);
                 mutex.shouldGiveUpLeadership = false;
-                callback?.onLeadershipLoss?.();
+
+                await callback?.onLeadershipLoss?.();
                 await this.acquireLeadershipOnRelease(mutex, ttl, checkIntervalInSeconds);
             }
 
@@ -141,8 +143,9 @@ export class LeadershipAcquirer {
 
             if (!renewalResult.ok || !renewalResult.value) {
                 console.error("Failed to renew leadership lock.");
+
                 clearInterval(renewalInterval);
-                callback?.onLeadershipLoss?.();
+                await callback?.onLeadershipLoss?.();
 
                 console.debug("Starting to monitor lock release again...");
                 await this.acquireLeadershipOnRelease(mutex, ttl, checkIntervalInSeconds);

@@ -13,19 +13,21 @@ const CONSUMER_URLS_KEY = "consumer:urls";
 
 /**
  * TODO: 
- * I'm going to skip over this for now but even though this looks CoOl,
- * it's a really inefficient way to get the next available consumer.
+ *
+ * I'm going to skip over this one for now...
+ * This is a really inefficient way to get the next available consumer.
  * Not because the algorithm is bad but because we copy the `liveConnections` array
- * every time we yield it. We're doing this to avoid exposing the internal reference
- * but this doesn't help us much either way because the connection references are still 
+ * every time we yield it. 
+ *
+ * We're doing this to avoid exposing the internal reference to the array.
+ * I.e. make it immutable and avoid side effects.
+ *
+ * but this doesn't help us much either way because the connection references within it are still 
  * accessible and mutable. Also, there's not really any way for us to avoid giving access
  * to the connections outside of the scope of the strategy and the manager, especially in 
- * high performance scenarius because a copy operation is expensive.
+ * high performance scenarios because a copy operation is expensive.
  *
  * Hence, TODO: Pull inside the consumer manager, avoid exposing the connections array.
- *
- * @qs
- *  * How expensive is the copy operation really if we have only 10 connections?
  */
 export const getNextAvailableConsumerRoundRobinStrategy = () => {
     let currentIndex = 0;
@@ -68,7 +70,7 @@ export const getNextAvailableConsumerRoundRobinStrategy = () => {
 
 export class ConsumerGroupManager {
     private connections: Record<string, Consumer> = {};
-    private _liveConnections: Consumer[] = []; // Consumer reference or url?
+    private _liveConnections: Consumer[] = [];
     public getNextAvailableConsumer: () => Consumer | undefined;
 
     constructor(
@@ -126,15 +128,6 @@ export class ConsumerGroupManager {
         }
     }
 
-    /**
-    * Method for creating a new socket connection to the specified consumer.
-    * Appends the appropriate event listeners to the connection which would handle
-    * trying to re-establish the connection in case of a disconnect and pushing the 
-    * identifier to the Database.
-    *
-    * TODO: This one and the one below could be merged into one method.
-    * But I spent too much time debugging blocking event loops I got to moveee.
-    */
     private establishConnectionWithConsumer(consumerUrl: string) {
         const socket = new WebSocket(`ws://${consumerUrl}`);
 
@@ -171,6 +164,10 @@ export class ConsumerGroupManager {
         this.connections[consumer.url] = newConsumer;
     }
 
+    // TODO: 
+    // If all consumers are unreachable for long periods, 
+    // it's probably an issue on the dispatcher's side.
+    // Bubble up the error to the main thread to give up leadership.
     reconnectDeadConsumers() {
         for (const connection of Object.values(this.connections)) {
             if (connection.closed) {

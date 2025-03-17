@@ -8,21 +8,20 @@ import prometheus from "prom-client";
 import { loadEnvironment } from "@asynchroza/common/src/environment";
 import { EventsService } from "../services/events-service";
 
-type DistributorWorkerData = {
+type WorkerDataInput = {
     redisUrl: string;
     consumerUrls: string[];
+    pushgatewayUrl: string;
 }
 
-const PROMETHEUS_PUSHGATEWAY_URL = loadEnvironment("PROMETHEUS_PUSHGATEWAY_URL");
-
 (async () => {
-    const { redisUrl, consumerUrls } = (workerData as DistributorWorkerData)
+    const { redisUrl, consumerUrls, pushgatewayUrl } = (workerData as WorkerDataInput)
 
     // TODO: Check if connection pooling is will help here
     const publisherclient = createClient({ url: redisUrl })
     const consumerClient = createClient({ url: redisUrl })
 
-    const promClient = new prometheus.Pushgateway(PROMETHEUS_PUSHGATEWAY_URL);
+    const promClient = new prometheus.Pushgateway(pushgatewayUrl);
     const eventsService = new EventsService("distributor", promClient);
 
     await Promise.all([publisherclient.connect(), consumerClient.connect()]);
@@ -53,7 +52,7 @@ const PROMETHEUS_PUSHGATEWAY_URL = loadEnvironment("PROMETHEUS_PUSHGATEWAY_URL")
         console.log(`Sending message to ${consumer.connection.url}`);
 
         consumer.connection.send(encodedMessage.value);
-        eventsService.incrementRelayedToConsumerMetric();
+        eventsService.incrementMessagesRelayedToConsumerMetric();
     })
 
     setInterval(() => consumerGroupManager.reconnectDeadConsumers(), 2000)
