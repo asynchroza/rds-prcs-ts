@@ -105,6 +105,26 @@ services:
       - redis_host
     networks:
       - rds-tsk
+  pumba:
+    image: gaiaadm/pumba:latest
+    container_name: pumba
+    entrypoint: ["/pumba"]
+    command:
+      - --log-level
+      - info 
+      - --interval
+      - 15s
+      - --random
+      - stop 
+      - --duration
+      - 1s
+      - --restart
+      - re2:^(consumer|dispatcher).*
+    networks:
+      - rds-tsk
+    tty: true
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock" 
 
 networks:
   rds-tsk:
