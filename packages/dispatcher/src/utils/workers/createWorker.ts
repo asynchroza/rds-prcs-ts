@@ -4,15 +4,15 @@ import { Worker } from "worker_threads";
 import { terminateWorkers } from "./terminateWorkers";
 
 export const createWorker = (
-    workerFileNameWoExt: string,
+    pathToWorker: string,
     workerData: any,
     mutex: { shouldGiveUpLeadership: boolean },
     workers: Worker[] | undefined,
     loadBundledRoutes = false
 ) => {
-    return new Worker(path.join(__dirname, getWorkerPath(workerFileNameWoExt, loadBundledRoutes)), { workerData })
+    return new Worker(path.join(__dirname, getWorkerPath(pathToWorker, loadBundledRoutes)), { workerData })
         .on("error", async (err) => {
-            console.error(`${workerFileNameWoExt} worker failed`, err);
+            console.error(`${pathToWorker.split("/")[0]} worker failed`, err);
             mutex.shouldGiveUpLeadership = true;
 
             if (workers) {

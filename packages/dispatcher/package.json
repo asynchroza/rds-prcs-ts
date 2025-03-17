@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --exec node -r ts-node/register --env-file=.env.sample src/index.ts",
-    "build": "ts-node esbuild.ts"
+    "build": "ts-node esbuild.ts",
+    "test": "vitest"
   },
   "devDependencies": {
     "nodemon": "^3.1.9",

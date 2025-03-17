@@ -1,12 +1,12 @@
 import { describe, expect, it, Mock, vi } from "vitest";
 import { createClient } from "redis";
-import { createHandleMessage, run } from "../../src/workers/acknowledger";
 import prometheus from "prom-client";
 import { afterEach } from "node:test";
 import { WebSocketServer } from "ws";
 import { EventsService } from "../../src/services/events-service";
 import { MessageHandler } from "../../src/services/message-handler";
 import { nonameproto } from "@asynchroza/common";
+import { createHandleMessage, run } from "../../src/workers/acknowledger/acknowledger";
 
 const createMockSocket = (on: Mock) => ({
     on: on.mockImplementation(() => createMockSocket(on)),
@@ -85,7 +85,7 @@ describe("Acknowledger", () => {
         });
     });
 
-    it("Correctly handles incoming messages", async () => {
+    it("Removes parsed message from sorted set as it's acknowledged", async () => {
         const messageHandler = {
             removeMessageFromSortedSet: vi.fn().mockImplementationOnce(() => Promise.resolve(1))
         };

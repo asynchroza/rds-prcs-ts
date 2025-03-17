@@ -1,11 +1,10 @@
 import { nonameproto } from "@asynchroza/common";
 import { createClient } from "redis";
-import { workerData } from "worker_threads";
-import { MessageHandler } from "../services/message-handler";
 import { WebSocketServer, RawData } from "ws";
 import { wsUtils } from "@asynchroza/common/src/utils";
-import { EventsService } from "../services/events-service";
 import prometheus from 'prom-client';
+import { MessageHandler } from "../../services/message-handler";
+import { EventsService } from "../../services/events-service";
 
 type WorkerDataInput = {
     redisUrl: string, acknowledgerPort: number, pushgatewayUrl: string
@@ -58,4 +57,3 @@ export async function run({ redisUrl, acknowledgerPort, pushgatewayUrl }: Worker
     eventsService.pushMetrics().catch(console.error);
 }
 
-(async () => run(workerData))()
