@@ -6,7 +6,7 @@ import { WebSocketServer } from "ws";
 import { EventsService } from "../../src/services/events-service";
 import { MessageHandler } from "../../src/services/message-handler";
 import { nonameproto } from "@asynchroza/common";
-import { createHandleMessage, run } from "../../src/workers/acknowledger/acknowledger";
+import { createHandleMessage, run } from "../../src/workers/acknowledger/worker";
 
 const createMockSocket = (on: Mock) => ({
     on: on.mockImplementation(() => createMockSocket(on)),

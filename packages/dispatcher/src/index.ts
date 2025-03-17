@@ -46,7 +46,7 @@ const IS_PROD = environment.loadEnvironment("NODE_ENV") === "production";
                     pushgatewayUrl: PROMETHEUS_PUSHGATEWAY_URL,
                 }, mutex, workers, IS_PROD),
 
-                createWorker("acknowledger/index", {
+                createWorker("acknowledger/runner", {
                     redisUrl: REDIS_PUBLISHER_URL,
                     acknowledgerPort: ACKNOWLEDGER_PORT,
                     pushgatewayUrl: PROMETHEUS_PUSHGATEWAY_URL,
