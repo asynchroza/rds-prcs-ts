@@ -22,6 +22,7 @@ services:
       - LEADERSHIP_TTL_IN_SECONDS=${LEADERSHIP_TTL_IN_SECONDS}
       - CONSUMER_URLS=consumer_service_1:6969,consumer_service_2:7001,consumer_service_3:7002
       - ACKNOWLEDGER_PORT=5001
+      - PROMETHEUS_PUSHGATEWAY_URL=http://pushgateway:9091
     ports:
       - 5001:5001
     depends_on:
@@ -42,6 +43,7 @@ services:
       - LEADERSHIP_TTL_IN_SECONDS=${LEADERSHIP_TTL_IN_SECONDS}
       - CONSUMER_URLS=consumer_service_1:6969,consumer_service_2:7001,consumer_service_3:7002
       - ACKNOWLEDGER_PORT=5002
+      - PROMETHEUS_PUSHGATEWAY_URL=http://pushgateway:9091
     ports:
       - 5002:5002
     depends_on:
@@ -162,6 +164,30 @@ services:
       - rds-tsk
     depends_on:
       - loki
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: pushgateway
+    restart: always
+    ports:
+      - "9091:9091"
+    networks:
+      - rds-tsk
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus-config.yaml:/etc/prometheus/prometheus.yml
+    networks:
+      - rds-tsk
+    depends_on:
+      - pushgateway
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
 
 networks:
   rds-tsk:
