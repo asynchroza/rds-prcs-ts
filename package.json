@@ -8,7 +8,8 @@
   "scripts": {
     "publisher:container:start": "cd publisher && docker-compose --env-file .env.publisher up --build -d",
     "publisher:start": "cd publisher && python3 publisher.py",
-    "compose:start": "docker-compose --env-file .env.compose up --build -d"
+    "compose:start": "docker-compose --env-file .env.compose up --build -d",
+    "scripts:start": "yarn workspace scripts start"
   },
   "license": "MIT",
   "private": true

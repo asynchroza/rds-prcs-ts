@@ -21,4 +21,9 @@ async function checkForReprocessedMessages() {
     console.log(`Found ${Object.keys(countPerMessageId).length} unique message IDs`)
 }
 
-checkForReprocessedMessages()
+(async () => {
+    await checkForReprocessedMessages()
+
+    process.exit(0)
+})()
+

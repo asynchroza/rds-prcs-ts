@@ -12,7 +12,7 @@ import { MessageHandler } from "../services/message-handler";
     setInterval(async () => {
         console.log("Checking for unacknowledged messages");
 
-        const before = Date.now() - 2000;
+        const before = Date.now() - 5000;
         const messages = await messageHandler.getUnacknowledgedMessages(before);
 
         if (messages.length > 0) {
@@ -23,5 +23,5 @@ import { MessageHandler } from "../services/message-handler";
 
         // Allocate time to avoid dirty reads
         // Change this as needed
-    }, 2000)
+    }, 3000)
 })()
