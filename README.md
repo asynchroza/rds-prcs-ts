@@ -29,11 +29,10 @@ Communication occurs over a **custom protocol** on top of WebSockets, structured
 This design aimed to **minimize JSON deserialization overhead** and reduce unnecessary bytes. However, after architectural changes affecting the payload structure between services, a simpler approach could have been to append the command character to the message string. This would have achieved the same result while only requiring an agreement on ASCII character mappings for different operations.
 
 ### **Performance & Reliability**  
-Under the current configuration, the system typically achieves the following numbers for batches of 10 000 messages for 2 minute long tests:  
+Under the current configuration, the system typically achieves the following numbers for batches of 10 000 messages for 2 minute long tests and at least one dispatcher shutdown:  
 - **0% reprocessed messages**  
 - **0.5% to 1% lost messages** 
-- **Handling of up to 3.1 million messages per test run**  
-- **Shutdown of the leader dispatcher at least once per test**  
+- **Handling of ~3.1 million messages per test run**  
 
 ![Process event count](docs/process_messages.png)
 
