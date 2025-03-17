@@ -1,9 +1,12 @@
 import { describe, expect, it, Mock, vi } from "vitest";
 import { createClient } from "redis";
-import { run } from "../../src/workers/acknowledger";
+import { createHandleMessage, run } from "../../src/workers/acknowledger";
 import prometheus from "prom-client";
 import { afterEach } from "node:test";
 import { WebSocketServer } from "ws";
+import { EventsService } from "../../src/services/events-service";
+import { MessageHandler } from "../../src/services/message-handler";
+import { nonameproto } from "@asynchroza/common";
 
 const createMockSocket = (on: Mock) => ({
     on: on.mockImplementation(() => createMockSocket(on)),
@@ -26,6 +29,12 @@ vi.mock("ws", () => ({
     WebSocketServer: vi.fn()
 }));
 
+vi.mock("@asynchroza/common", () => ({
+    nonameproto: {
+        decode: vi.fn()
+    }
+}))
+
 const REDIS_URL = "redis://redis-mock:7123";
 const ACK_PORT = 7124;
 const PUSHGATEWAY_URL = "http://pushgateway-mock:9091";
@@ -41,10 +50,11 @@ describe("Acknowledger", () => {
         vi.clearAllMocks()
     });
 
-    it("A message is propagated through initialized server socket", async () => {
+    it("Server is correctly initialized", async () => {
         const on = vi.fn();
 
         // WebSockets are using the builder pattern to chain event handlers
+        // Pass along the same `on` mock reference to easily test the chain
         const mockedSocket = vi.fn().mockImplementation(() => createMockSocket(on));
 
         const eventServicePushAdd = vi.fn();
@@ -59,11 +69,12 @@ describe("Acknowledger", () => {
 
         await run(mockWorkerData);
 
+        // Dependencies are initialized
         expect(createClient).toHaveBeenCalledExactlyOnceWith({ url: REDIS_URL });
         expect(prometheus.Pushgateway).toHaveBeenCalledExactlyOnceWith(PUSHGATEWAY_URL);
-        expect(WebSocketServer).toHaveBeenCalledExactlyOnceWith({ port: ACK_PORT });
 
         // Server connection is initialized
+        expect(WebSocketServer).toHaveBeenCalledExactlyOnceWith({ port: ACK_PORT });
         expect(mockedSocket).toHaveBeenCalledWith("connection", expect.any(Function));
         expect(on).toHaveBeenCalledWith("error", expect.any(Function));
         expect(on).toHaveBeenCalledWith("close", expect.any(Function));
@@ -73,5 +84,32 @@ describe("Acknowledger", () => {
             jobName: "dispatcher_acknowledger_metrics",
         });
     });
+
+    it("Correctly handles incoming messages", async () => {
+        const messageHandler = {
+            removeMessageFromSortedSet: vi.fn().mockImplementationOnce(() => Promise.resolve(1))
+        };
+
+        const eventService = {
+            incrementAcknowledgedMessagesMetric: vi.fn()
+        }
+
+        const handleMessage = createHandleMessage(
+            messageHandler as unknown as MessageHandler,
+            eventService as unknown as EventsService
+        );
+
+        (nonameproto.decode as Mock<typeof nonameproto.decode>).mockReturnValueOnce({
+            ok: true,
+            value: {
+                command: "ACK",
+                message: "AAAAAA"
+            }
+        })
+
+        handleMessage(new ArrayBuffer(10));
+
+        expect(messageHandler.removeMessageFromSortedSet).toHaveBeenCalledExactlyOnceWith("AAAAAA");
+    })
 });
 

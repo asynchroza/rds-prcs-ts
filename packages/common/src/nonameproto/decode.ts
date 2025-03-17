@@ -8,38 +8,45 @@ type InitialDecode = {
 }
 
 export function initialDecode(buffer: ArrayBuffer): types.Result<InitialDecode> {
-    const view = new DataView(buffer);
+    try {
+        const view = new DataView(buffer);
 
-    const version = view.getUint8(0);
+        const version = view.getUint8(0);
 
-    if (version !== PROTO_VERSION) {
+        if (version !== PROTO_VERSION) {
+            return {
+                ok: false,
+                error: new Error("Invalid version")
+            }
+        }
+
+        const command = BINARY_TO_COMMANDS.get(view.getUint8(1));
+
+        if (!command) {
+            return {
+                ok: false,
+                error: new Error("Invalid command")
+            }
+        }
+
+        const messageLength = view.getUint32(2, true);
+
+        const messageBytes = new Uint8Array(buffer, 6, messageLength);
+
+        const message = new TextDecoder().decode(messageBytes);
+
+        return {
+            ok: true, value: {
+                command,
+                message
+            }
+        };
+    } catch (error) {
         return {
             ok: false,
-            error: new Error("Invalid version")
+            error: error instanceof Error ? error : new Error(String(error))
         }
     }
-
-    const command = BINARY_TO_COMMANDS.get(view.getUint8(1));
-
-    if (!command) {
-        return {
-            ok: false,
-            error: new Error("Invalid command")
-        }
-    }
-
-    const messageLength = view.getUint32(2, true);
-
-    const messageBytes = new Uint8Array(buffer, 6, messageLength);
-
-    const message = new TextDecoder().decode(messageBytes);
-
-    return {
-        ok: true, value: {
-            command,
-            message
-        }
-    };
 }
 
 export function decode(buffer: ArrayBuffer): types.Result<InitialDecode> {
