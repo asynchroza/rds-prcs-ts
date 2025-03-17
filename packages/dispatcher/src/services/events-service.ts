@@ -20,7 +20,7 @@ export class EventsService {
 
     constructor(private name: string, private client: prometheus.Pushgateway<any>) { }
 
-    async incrementRelayedToConsumerMetric() {
+    async incrementMessageRelayedToConsumerMetric() {
         this.relayedMessageToConsumerCounter.inc();
     }
 

@@ -139,16 +139,13 @@ export class ConsumerGroupManager {
 
         this.enqueueConnection(consumer);
 
-        socket.onclose = () => {
-            consumer.closed = true;
+        const closeConnection = () => {
             if (!consumer.closed) this.dequeueConnection(consumerUrl);
+            consumer.closed = true;
         }
 
-        socket.onerror = () => {
-            console.error(`Error with connection to ${consumerUrl}`);
-            consumer.closed = true;
-            if (!consumer.closed) this.dequeueConnection(consumerUrl);
-        }
+        socket.onclose = closeConnection;
+        socket.onerror = closeConnection;
 
         return consumer;
     }

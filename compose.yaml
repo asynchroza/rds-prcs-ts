@@ -60,7 +60,7 @@ services:
         - WORKSPACE=consumer
     restart: always
     environment:
-      - CONSUMER_PORT=6969
+      - CONSUMER_URL=consumer_service_1:6969
       - REDIS_PUBLISHER_URL=redis://redis_host:6379
       - ACK_HOSTS=dispatcher_service_1:5001,dispatcher_service_2:5002
     ports:
@@ -79,7 +79,7 @@ services:
         - WORKSPACE=consumer
     restart: always
     environment:
-      - CONSUMER_PORT=7001
+      - CONSUMER_URL=consumer_service_2:7001
       - REDIS_PUBLISHER_URL=redis://redis_host:6379
       - ACK_HOSTS=dispatcher_service_1:5001,dispatcher_service_2:5002
     ports:
@@ -98,7 +98,7 @@ services:
         - WORKSPACE=consumer
     restart: always
     environment:
-      - CONSUMER_PORT=7002
+      - CONSUMER_URL=consumer_service_3:7002
       - REDIS_PUBLISHER_URL=redis://redis_host:6379
       - ACK_HOSTS=dispatcher_service_1:5001,dispatcher_service_2:5002
     ports:
