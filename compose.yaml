@@ -126,7 +126,47 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock" 
 
+  loki:
+    image: grafana/loki:2.8.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - rds-tsk
+
+  promtail:
+    image: grafana/promtail:2.8.2
+    container_name: promtail
+    volumes:
+      - /var/log:/var/log
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - rds-tsk
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - rds-tsk
+    depends_on:
+      - loki
+
 networks:
   rds-tsk:
     driver: bridge
+
+volumes:
+  grafana-storage:
 
