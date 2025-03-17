@@ -94,7 +94,7 @@ export class ConsumerGroupManager {
 
     private enqueueConnection(consumer: Consumer) {
         this._liveConnections.push(consumer);
-        this.addConsumerUrlToDatabase(consumer.url);
+        return this.addConsumerUrlToDatabase(consumer.url);
     }
 
     // TODO: Figure out a bettter way to handle this. Cloning the array is not efficient and we're still exposing the internal reference to the consumers
@@ -121,14 +121,22 @@ export class ConsumerGroupManager {
     async setConsumers(consumerUrls: string[]) {
         await this.resetConsumerUrlsInRedisList();
 
+        const connectionPromises: Promise<Consumer>[] = [];
+
         for (const consumer of consumerUrls) {
             if (!this.connections[consumer]) {
-                this.connections[consumer] = this.establishConnectionWithConsumer(consumer);
+                connectionPromises.push(this.establishConnectionWithConsumer(consumer));
             }
         }
+
+        const consumers = await Promise.all(connectionPromises);
+
+        consumers.map(consumer => {
+            this.connections[consumer.url] = consumer;
+        })
     }
 
-    private establishConnectionWithConsumer(consumerUrl: string) {
+    private async establishConnectionWithConsumer(consumerUrl: string) {
         const socket = new WebSocket(`ws://${consumerUrl}`);
 
         const consumer: Consumer = {
@@ -137,28 +145,34 @@ export class ConsumerGroupManager {
             closed: false
         }
 
-        this.enqueueConnection(consumer);
+        await this.enqueueConnection(consumer);
 
         socket.onclose = () => {
-            consumer.closed = true;
             if (!consumer.closed) this.dequeueConnection(consumerUrl);
+
+            // Ensure it's marked as closed
+            consumer.closed = true;
         }
 
         socket.onerror = () => {
             console.error(`Error with connection to ${consumerUrl}`);
-            consumer.closed = true;
+
+            // If consumer isn't already closed, close it
             if (!consumer.closed) this.dequeueConnection(consumerUrl);
+
+            // Ensure it's marked as closed
+            consumer.closed = true;
         }
 
         return consumer;
     }
 
-    private reconnectToConsumer(consumer: Consumer) {
+    private async reconnectToConsumer(consumer: Consumer) {
         if (!consumer.closed) return;
 
         console.log(`Attempting to reconnect to ${consumer.url}`);
 
-        const newConsumer = this.establishConnectionWithConsumer(consumer.url);
+        const newConsumer = await this.establishConnectionWithConsumer(consumer.url);
         delete this.connections[consumer.url];
 
         this.connections[consumer.url] = newConsumer;
@@ -168,11 +182,15 @@ export class ConsumerGroupManager {
     // If all consumers are unreachable for long periods, 
     // it's probably an issue on the dispatcher's side.
     // Bubble up the error to the main thread to give up leadership.
-    reconnectDeadConsumers() {
+    async reconnectDeadConsumers() {
+        const reconnectionPromises: Promise<void>[] = [];
+
         for (const connection of Object.values(this.connections)) {
             if (connection.closed) {
-                this.reconnectToConsumer(connection);
+                reconnectionPromises.push(this.reconnectToConsumer(connection));
             }
         }
+
+        await Promise.all(reconnectionPromises);
     }
 }

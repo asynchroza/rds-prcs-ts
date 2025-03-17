@@ -14,7 +14,6 @@ const PROMETHEUS_PUSHGATEWAY_URL = environment.loadEnvironment("PROMETHEUS_PUSHG
 const IS_PROD = environment.loadEnvironment("NODE_ENV") === "production";
 
 
-
 (async () => {
     const client = createClient({ url: REDIS_PUBLISHER_URL });
     await client.connect();
@@ -33,7 +32,7 @@ const IS_PROD = environment.loadEnvironment("NODE_ENV") === "production";
 
         },
         async onLeadershipAcquire() {
-            if (workers && workers?.length > 0) {
+            if (workers) {
                 console.warn("Workers are running, terminating old ones before starting new ones");
                 await terminateWorkers(workers);
             }
