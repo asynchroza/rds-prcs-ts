@@ -1,4 +1,4 @@
-# Implementation Idea
+# Preliminary Implementation Idea
 
 ## Assumptions Made
 - We don't care about the order of how messages are processed and written to the stream

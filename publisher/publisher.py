@@ -13,7 +13,7 @@ load_dotenv('.env.publisher')
 redis_host = environ["REDIS_HOST"]
 redis_port = environ["REDIS_PORT"]
 target_duration = timedelta(minutes=2)
-batch_size = 8_000
+batch_size = 10_000 
 
 def publisher():
     try:

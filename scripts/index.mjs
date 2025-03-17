@@ -43,8 +43,8 @@ const testEventServiceWrite = async () => {
 }
 
 (async () => {
-    // await checkForReprocessedMessages()
-    await testEventServiceWrite()
+    await checkForReprocessedMessages()
+    // await testEventServiceWrite()
 
     process.exit(0)
 })()
