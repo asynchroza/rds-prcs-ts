@@ -11,9 +11,7 @@ type WorkerDataInput = {
     redisUrl: string, acknowledgerPort: number, pushgatewayUrl: string
 }
 
-(async () => {
-    const { redisUrl, acknowledgerPort, pushgatewayUrl } = workerData as WorkerDataInput;
-
+export async function run({ redisUrl, acknowledgerPort, pushgatewayUrl }: WorkerDataInput) {
     const redisClient = createClient({ url: redisUrl });
     await redisClient.connect();
 
@@ -58,4 +56,6 @@ type WorkerDataInput = {
         .on("close", () => { throw new Error("Server closed unexpectedly") });
 
     eventsService.pushMetrics().catch(console.error);
-})()
+}
+
+(async () => run(workerData))()
