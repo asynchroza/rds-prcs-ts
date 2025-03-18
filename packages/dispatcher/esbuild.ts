@@ -2,7 +2,7 @@ import esbuild from 'esbuild';
 
 export default async function build() {
     await esbuild.build({
-        entryPoints: ['./src/index.ts', './src/workers/acknowledger/runner.ts', './src/workers/message-distributor.ts', './src/workers/message-redistributor.ts'],
+        entryPoints: ['./src/index.ts', './src/workers/acknowledger/runner.ts', './src/workers/distributor/runner.ts', './src/workers/republisher/runner.ts'],
         bundle: true,
         outdir: './dist',
         platform: 'node',

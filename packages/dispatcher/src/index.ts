@@ -40,7 +40,7 @@ const IS_PROD = environment.loadEnvironment("NODE_ENV") === "production";
 
             workers = [];
             workers.push(
-                createWorker("message-distributor", {
+                createWorker("distributor/runner", {
                     redisUrl: REDIS_PUBLISHER_URL,
                     consumerUrls: CONSUMER_URLS,
                     pushgatewayUrl: PROMETHEUS_PUSHGATEWAY_URL,
@@ -53,7 +53,7 @@ const IS_PROD = environment.loadEnvironment("NODE_ENV") === "production";
                     workers,
                 }, mutex, workers, IS_PROD),
 
-                createWorker("message-redistributor", {
+                createWorker("republisher/runner", {
                     redisUrl: REDIS_PUBLISHER_URL,
                     pushgatewayUrl: PROMETHEUS_PUSHGATEWAY_URL,
                     workers
